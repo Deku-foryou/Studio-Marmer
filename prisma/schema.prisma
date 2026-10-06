@@ -71,11 +71,13 @@ model Product {
   /// `originalPrice IS NULL OR originalPrice > price`.
   originalPrice Decimal?     @db.Decimal(12, 2)
 
-  color        String?  @db.VarChar(120)
-  material     String?  @db.VarChar(120)
-  stoneType    String?  @db.VarChar(120)
-  dimensions   String?  @db.VarChar(120)
-  weightGrams  Int?
+  /// Mandatory product attributes. These are enforced as NOT NULL at the
+  /// database level - a product cannot be saved without them.
+  color        String  @db.VarChar(120)
+  material     String? @db.VarChar(120)
+  stoneType    String  @db.VarChar(120)
+  dimensions   String  @db.VarChar(120)
+  weightGrams  Int
   specifications Json?
 
   craftingTime String? @db.VarChar(120)
