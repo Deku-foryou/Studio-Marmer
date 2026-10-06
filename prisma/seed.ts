@@ -576,15 +576,16 @@ async function seedDummyProducts(): Promise<void> {
   const categoryIdBySlug = new Map(categories.map((c) => [c.slug, c.id]));
 
   for (const item of DUMMY_PRODUCTS) {
-    const categoryId = categoryIdBySlug.get(item.categorySlug);
+    // `images` and `categorySlug` are seed-only fields, not Product columns,
+    // so they are split off before the row is built.
+    const { images, categorySlug, ...productColumns } = item;
+
+    const categoryId = categoryIdBySlug.get(categorySlug);
     if (categoryId === undefined) {
       throw new Error(
-        `Seed category "${item.categorySlug}" is missing. Run seedCategoriesAndSettings() first.`
+        `Seed category "${categorySlug}" is missing. Run seedCategoriesAndSettings() first.`
       );
     }
-
-    // `images` and `categorySlug` are seed-only fields, not Product columns.
-    const { images, categorySlug: _seedCategorySlug, ...productColumns } = item;
 
     const price = new Prisma.Decimal(item.price);
     const originalPrice = item.originalPrice

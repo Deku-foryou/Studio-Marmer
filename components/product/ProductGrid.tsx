@@ -39,10 +39,10 @@ export default function ProductGrid({ products, categories }: ProductGridProps) 
           </div>
           <div className="text-center">
             <p className="text-lg font-light text-[#1A1A1A] mb-2">
-              No products found
+              Produk tidak ditemukan
             </p>
             <p className="text-sm text-[#666666] font-light">
-              Try adjusting your filters or search query.
+              Coba ubah kata kunci pencarian atau filter yang dipilih.
             </p>
           </div>
         </div>

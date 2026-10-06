@@ -9,12 +9,6 @@
 // instance is ever handed to a Client Component. See lib/data/products.ts.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Categories are now managed in the database, so the set is no longer a
- * compile-time union. Kept as an alias so existing imports keep working.
- */
-export type ProductCategory = string;
-
 export type StockStatus = 'In Stock' | 'Limited Stock' | 'Out of Stock';
 
 export type PricingType = 'FIXED' | 'STARTING_FROM';
@@ -26,12 +20,11 @@ export type SortOption =
   | 'trending';
 
 /**
- * Serialized product used by Client Components (cards, cart drawer, filters).
+ * Serialized product used by the catalog UI (cards, grid, gallery).
  *
  * Every field is a plain JSON-safe primitive. Derived presentation fields
  * (`brand`, `discountPercentage`, `stockStatus`, `isTrending`, `isNewArrival`)
- * are computed in the data access layer from the persisted Prisma columns, so
- * the existing UI components keep working unchanged.
+ * are computed in the data access layer from the persisted Prisma columns.
  */
 export interface CatalogProduct {
   /** Stringified numeric primary key. Used for DOM ids and cart line keys. */
@@ -95,34 +88,9 @@ export interface ProductSpecification {
   readonly value: string;
 }
 
-export interface CartItem {
-  readonly product: CatalogProduct;
-  quantity: number;
-}
-
-export interface CartState {
-  readonly items: CartItem[];
-  readonly isDrawerOpen: boolean;
-}
-
 export interface FilterState {
   readonly searchQuery: string;
   readonly selectedCategories: readonly string[];
   readonly selectedSort: SortOption;
   readonly showInStockOnly: boolean;
-}
-
-export type CartAction =
-  | { type: 'ADD_ITEM'; payload: CatalogProduct }
-  | { type: 'REMOVE_ITEM'; payload: string }
-  | { type: 'INCREMENT_QTY'; payload: string }
-  | { type: 'DECREMENT_QTY'; payload: string }
-  | { type: 'TOGGLE_DRAWER' }
-  | { type: 'OPEN_DRAWER' }
-  | { type: 'CLOSE_DRAWER' }
-  | { type: 'CLEAR_CART' };
-
-export interface PriceBreakdown {
-  readonly subtotal: number;
-  readonly total: number;
 }

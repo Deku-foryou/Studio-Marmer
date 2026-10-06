@@ -7,15 +7,16 @@ import { SlidersHorizontal, CheckSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
-  { value: 'featured', label: 'Featured' },
-  { value: 'price-asc', label: 'Price: Low → High' },
-  { value: 'price-desc', label: 'Price: High → Low' },
-  { value: 'trending', label: 'Trending' },
+  { value: 'featured', label: 'Pilihan Kami' },
+  { value: 'price-asc', label: 'Harga: Terendah' },
+  { value: 'price-desc', label: 'Harga: Tertinggi' },
+  { value: 'trending', label: 'Unggulan' },
 ];
 
 /**
  * Presentation glyph per category. Categories themselves come from the
- * database; this map only supplies the small icon shown on each chip.
+ * database; this map only supplies a small icon for known slugs and falls back
+ * to a neutral marker for anything the client adds later.
  */
 const CATEGORY_ICONS: Record<string, string> = {
   vases: '🏺',
@@ -59,7 +60,7 @@ export default function FilterBar({ resultCount, categories }: FilterBarProps) {
                   : 'border-[#E5E1DA] bg-white text-[#666666] hover:text-[#1A1A1A] hover:border-[#1A1A1A]'
               )}
               aria-pressed={isActive}
-              aria-label={`Filter by ${cat.name}`}
+              aria-label={`Filter kategori ${cat.name}`}
             >
               <span className="text-sm leading-none opacity-80">
                 {CATEGORY_ICONS[cat.slug] ?? '◆'}
@@ -111,10 +112,10 @@ export default function FilterBar({ resultCount, categories }: FilterBarProps) {
                 : 'bg-white border-[#E5E1DA] text-[#666666] hover:text-[#1A1A1A] hover:border-[#1A1A1A]'
             )}
             aria-pressed={filters.showInStockOnly}
-            aria-label="Show in-stock items only"
+            aria-label="Tampilkan produk yang tersedia saja"
           >
             <CheckSquare size={12} className={cn(filters.showInStockOnly ? 'text-white' : 'text-[#999999]')} />
-            In Stock Only
+            Tersedia Saja
           </button>
 
           {/* Clear Filters */}
@@ -124,14 +125,16 @@ export default function FilterBar({ resultCount, categories }: FilterBarProps) {
               onClick={clearFilters}
               className="text-xs uppercase tracking-wider text-[#999999] hover:text-[#1A1A1A] transition-colors underline underline-offset-4"
             >
-              Clear filters
+              Hapus Filter
             </button>
           )}
         </div>
 
         {/* Result Count */}
         <p className="text-xs uppercase tracking-wider text-[#999999]">
-          Showing <span className="text-[#1A1A1A] font-semibold">{resultCount}</span> products
+          Menampilkan{' '}
+          <span className="text-[#1A1A1A] font-semibold">{resultCount}</span>{' '}
+          produk
         </p>
       </div>
     </div>
