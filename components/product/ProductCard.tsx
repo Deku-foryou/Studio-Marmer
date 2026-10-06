@@ -3,16 +3,16 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, ArrowUpRight } from 'lucide-react';
-import type { Product } from '@/types/product';
+import type { CatalogProduct } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
 import { useState } from 'react';
 
 interface ProductCardProps {
-  product: Product;
+  product: CatalogProduct;
 }
 
-function StatusTag({ product }: { product: Product }) {
+function StatusTag({ product }: { product: CatalogProduct }) {
   if (product.stockStatus === 'Limited Stock') {
     return (
       <span className="text-[10px] uppercase tracking-[0.18em] text-[#8B7355] font-medium">
@@ -37,8 +37,7 @@ function StatusTag({ product }: { product: Product }) {
   return null;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
-  const { addToCart, openDrawer } = useCart();
+export default function ProductCard({ product }: ProductCardProps) {  const { addToCart, openDrawer } = useCart();
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddToCart = () => {
@@ -58,7 +57,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     >
       {/* ─── Image ──────────────────────────────────────────── */}
       <Link
-        href={`/product/${product.id}`}
+        href={`/produk/${product.slug}`}
         className="relative aspect-[4/3] overflow-hidden rounded-none bg-[#F3F1EE] cursor-pointer block"
       >
         <Image
@@ -100,7 +99,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Title */}
           <h3 className="text-[14px] font-medium text-[#1A1A1A] leading-snug line-clamp-2 -mt-0.5 min-h-[40px]">
-            <Link href={`/product/${product.id}`} className="hover:opacity-75 transition-opacity">
+            <Link href={`/produk/${product.slug}`} className="hover:opacity-75 transition-opacity">
               {product.title}
             </Link>
           </h3>
@@ -112,11 +111,12 @@ export default function ProductCard({ product }: ProductCardProps) {
             <span className="text-[16px] font-semibold text-[#1A1A1A] tracking-tight">
               {formatPrice(product.price)}
             </span>
-            {product.originalPrice > product.price && (
-              <span className="text-[13px] text-[#C9C4BC] line-through">
-                {formatPrice(product.originalPrice)}
-              </span>
-            )}
+            {product.originalPrice !== null &&
+              product.originalPrice > product.price && (
+                <span className="text-[13px] text-[#C9C4BC] line-through">
+                  {formatPrice(product.originalPrice)}
+                </span>
+              )}
           </div>
 
           {/* Add to Cart */}

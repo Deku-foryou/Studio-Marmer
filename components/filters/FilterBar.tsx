@@ -1,8 +1,8 @@
 'use client';
 
 import { useFilter } from '@/context/FilterContext';
-import { CATEGORIES } from '@/data/categories';
 import type { SortOption } from '@/types/product';
+import type { CatalogCategory } from '@/types/product';
 import { SlidersHorizontal, CheckSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -13,17 +13,26 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'trending', label: 'Trending' },
 ];
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  Smartphones: '📱',
-  Laptops: '💻',
-  Audio: '🎧',
-  Wearables: '⌚',
-  Cameras: '📷',
-  Gaming: '🎮',
-  Accessories: '🔌',
+/**
+ * Presentation glyph per category. Categories themselves come from the
+ * database; this map only supplies the small icon shown on each chip.
+ */
+const CATEGORY_ICONS: Record<string, string> = {
+  vases: '🏺',
+  coasters: '☕',
+  trays: '🍽️',
+  tables: '🪑',
+  sculptures: '🗿',
+  decor: '🕯️',
 };
 
-export default function FilterBar({ resultCount }: { resultCount: number }) {
+interface FilterBarProps {
+  resultCount: number;
+  /** Active categories, supplied by the server from the database. */
+  categories: CatalogCategory[];
+}
+
+export default function FilterBar({ resultCount, categories }: FilterBarProps) {
   const { filters, toggleCategory, setSort, toggleInStock, clearFilters } =
     useFilter();
 
@@ -36,24 +45,26 @@ export default function FilterBar({ resultCount }: { resultCount: number }) {
     <div className="space-y-6">
       {/* ─── Row 1: Categories ─────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2">
-        {CATEGORIES.map((cat) => {
-          const isActive = filters.selectedCategories.includes(cat);
+        {categories.map((cat) => {
+          const isActive = filters.selectedCategories.includes(cat.slug);
           return (
             <button
-              key={cat}
-              id={`filter-${cat.toLowerCase()}`}
-              onClick={() => toggleCategory(cat)}
+              key={cat.id}
+              id={`filter-${cat.slug}`}
+              onClick={() => toggleCategory(cat.slug)}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 border text-xs uppercase tracking-wider transition-all duration-200 rounded-none',
                 isActive
                   ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white'
-                  : 'bg-white border-[#E5E1DA] text-[#666666] hover:text-[#1A1A1A] hover:border-[#1A1A1A]'
+                  : 'border-[#E5E1DA] bg-white text-[#666666] hover:text-[#1A1A1A] hover:border-[#1A1A1A]'
               )}
               aria-pressed={isActive}
-              aria-label={`Filter by ${cat}`}
+              aria-label={`Filter by ${cat.name}`}
             >
-              <span className="text-sm leading-none opacity-80">{CATEGORY_ICONS[cat]}</span>
-              <span>{cat}</span>
+              <span className="text-sm leading-none opacity-80">
+                {CATEGORY_ICONS[cat.slug] ?? '◆'}
+              </span>
+              <span>{cat.name}</span>
             </button>
           );
         })}

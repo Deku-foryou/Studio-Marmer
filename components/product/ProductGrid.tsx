@@ -1,21 +1,34 @@
 'use client';
 
-import { PRODUCTS } from '../../data/products';
 import { useFilter } from '../../context/FilterContext';
 import { useFilteredProducts } from '../../hooks/useFilteredProducts';
 import ProductCard from './ProductCard';
 import FilterBar from '../filters/FilterBar';
 import { PackageSearch } from 'lucide-react';
+import type { CatalogCategory, CatalogProduct } from '../../types/product';
 
-export default function ProductGrid() {
+interface ProductGridProps {
+  /** Products loaded on the server from MySQL via the data access layer. */
+  products: CatalogProduct[];
+  /** Categories loaded on the server. */
+  categories: CatalogCategory[];
+}
+
+/**
+ * Client component that owns interactive catalog state (quick-view target and
+ * filter-driven sorting). The product rows themselves arrive as serialized
+ * props from a Server Component - this component performs no database access
+ * and must never import Prisma.
+ */
+export default function ProductGrid({ products, categories }: ProductGridProps) {
   const { filters } = useFilter();
-  const filtered = useFilteredProducts(PRODUCTS, filters);
+  const filtered = useFilteredProducts(products, filters);
 
   return (
     <section aria-label="Product catalog">
       {/* ─── Filters ──────────────────────────────────────── */}
       <div className="mb-8">
-        <FilterBar resultCount={filtered.length} />
+        <FilterBar resultCount={filtered.length} categories={categories} />
       </div>
 
       {/* ─── Grid ─────────────────────────────────────────── */}
@@ -44,7 +57,10 @@ export default function ProductGrid() {
               key={product.id}
               role="listitem"
               className="animate-fade-up h-full flex flex-col"
-              style={{ animationDelay: `${Math.min(index * 50, 400)}ms`, animationFillMode: 'both' }}
+              style={{
+                animationDelay: `${Math.min(index * 50, 400)}ms`,
+                animationFillMode: 'both',
+              }}
             >
               <ProductCard product={product} />
             </div>

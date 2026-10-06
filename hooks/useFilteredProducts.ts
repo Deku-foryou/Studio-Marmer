@@ -1,29 +1,35 @@
 import { useMemo } from 'react';
-import type { Product, FilterState } from '@/types/product';
+import type { CatalogProduct, FilterState } from '@/types/product';
 
+/**
+ * Client-side filter/search pipeline over the serialized catalog.
+ *
+ * The rows arrive as props from a Server Component, so this stays a pure,
+ * memoized transform. Server-side search is deliberately out of scope for this
+ * phase.
+ */
 export function useFilteredProducts(
-  products: readonly Product[],
+  products: readonly CatalogProduct[],
   filters: FilterState
-): Product[] {
+): CatalogProduct[] {
   return useMemo(() => {
     let result = [...products];
 
-    // 1. Text search across title, brand, and tags
+    // 1. Text search across title, brand (stone type) and category
     if (filters.searchQuery.trim()) {
       const q = filters.searchQuery.toLowerCase().trim();
       result = result.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
           p.brand.toLowerCase().includes(q) ||
-          p.tags.some((t) => t.toLowerCase().includes(q)) ||
           p.category.toLowerCase().includes(q)
       );
     }
 
-    // 2. Category filter (multi-select — OR logic)
+    // 2. Category filter (multi-select — OR logic, matched by category slug)
     if (filters.selectedCategories.length > 0) {
       result = result.filter((p) =>
-        filters.selectedCategories.includes(p.category)
+        filters.selectedCategories.includes(p.categorySlug)
       );
     }
 

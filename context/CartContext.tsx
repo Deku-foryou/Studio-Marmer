@@ -14,12 +14,12 @@ import type {
   CartState,
   CartAction,
   CartItem,
-  Product,
+  CatalogProduct,
   PriceBreakdown,
 } from '@/types/product';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const LS_KEY = 'nexus-cart-v1';
+const LS_KEY = 'studio-marmer-cart-v2';
 
 // ─── Initial State ─────────────────────────────────────────────────────────────
 const initialState: CartState = {
@@ -103,7 +103,7 @@ interface CartContextValue {
   dispatch: React.Dispatch<CartAction>;
   priceBreakdown: PriceBreakdown;
   totalItemCount: number;
-  addToCart: (product: Product) => void;
+  addToCart: (product: CatalogProduct) => void;
   removeFromCart: (productId: string) => void;
   incrementQty: (productId: string) => void;
   decrementQty: (productId: string) => void;
@@ -189,7 +189,7 @@ export function CartProvider({ children }: CartProviderProps) {
 
   // ─── Stable Action Helpers ─────────────────────────────────────────────────
   const addToCart = useCallback(
-    (product: Product) => dispatch({ type: 'ADD_ITEM', payload: product }),
+    (product: CatalogProduct) => dispatch({ type: 'ADD_ITEM', payload: product }),
     []
   );
   const removeFromCart = useCallback(
