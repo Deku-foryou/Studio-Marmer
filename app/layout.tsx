@@ -1,12 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { FilterProvider } from '@/context/FilterContext';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
-import { getSiteSettings } from '@/lib/data/site';
-import { getSiteOrigin } from '@/lib/site-url';
-import { BRAND } from '@/lib/brand';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,12 +15,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(getSiteOrigin()),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: {
-    default: `${BRAND.name} — ${BRAND.tagline}`,
+    default: 'Studio Marmer — Kerajinan Marmer',
     template: '%s',
   },
-  description: BRAND.description,
+  description:
+    'Studio Marmer mengukir potongan marmer menjadi benda yang dipakai setiap hari, dengan menghormati karakter alami setiap batu.',
   keywords: [
     'kerajinan marmer',
     'marmer handmade',
@@ -36,13 +31,14 @@ export const metadata: Metadata = {
     'coaster marmer',
     'Studio Marmer',
   ],
-  applicationName: BRAND.name,
+  applicationName: 'Studio Marmer',
   openGraph: {
-    title: `${BRAND.name} — ${BRAND.tagline}`,
-    description: BRAND.description,
+    title: 'Studio Marmer — Kerajinan Marmer',
+    description:
+      'Koleksi kerajinan marmer dengan karakter alami, dibuat untuk menghadirkan sentuhan elegan pada ruang Anda.',
     type: 'website',
     locale: 'id_ID',
-    siteName: BRAND.name,
+    siteName: 'Studio Marmer',
   },
   robots: {
     index: true,
@@ -51,30 +47,22 @@ export const metadata: Metadata = {
 };
 
 /**
- * Root layout — Server Component.
+ * Root layout — the single <html>/<body> shell shared by every route.
  *
- * Site-wide configuration is read once here and passed down as plain props, so
- * the Navbar and Footer never touch the database themselves.
- *
- * Studio Marmer has no internal checkout, so no cart provider is mounted.
+ * It intentionally renders nothing but `{children}`. Customer chrome
+ * (Navbar, Footer, the catalog filter provider) lives in `app/(store)/layout.tsx`
+ * and the admin chrome in `app/(admin)/admin/layout.tsx`, so the two areas stay
+ * architecturally separate and neither inherits the other's state.
  */
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Site-wide configuration is read once here and passed down as plain props,
-  // so the Navbar and Footer never touch the database themselves.
-  const settings = await getSiteSettings();
-
   return (
     <html lang="id" className={inter.variable}>
       <body className="bg-[#FBF9F6] text-[#1A1A1A] font-[family-name:var(--font-inter)] antialiased min-h-screen flex flex-col">
-        <FilterProvider>
-          <Navbar settings={settings} />
-          <main className="flex-1">{children}</main>
-          <Footer settings={settings} />
-        </FilterProvider>
+        {children}
       </body>
     </html>
   );
