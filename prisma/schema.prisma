@@ -12,6 +12,14 @@ enum Role {
   EDITOR
 }
 
+/// How `price` should be interpreted when displayed.
+enum PricingType {
+  /// `price` is the exact selling price.
+  FIXED
+  /// `price` is the entry price; the final figure may be higher.
+  STARTING_FROM
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   name         String   @db.VarChar(120)
@@ -52,12 +60,22 @@ model Product {
   shortDescription String  @db.VarChar(500)
   description      String  @db.Text
 
-  price Decimal @db.Decimal(12, 2)
+  /// Selling price. Always required - there is no "contact us" / no-price state.
+  /// Display it as an exact figure when `pricingType` is FIXED, and as a
+  /// lower bound ("starting from") when `pricingType` is STARTING_FROM.
+  price        Decimal      @db.Decimal(12, 2)
+  pricingType  PricingType  @default(FIXED)
+  /// Optional strike-through reference price. Discount percentage is NOT
+  /// stored - derive it from `price` / `originalPrice` at render time.
+  /// Invariant (enforced by a DB CHECK constraint where supported):
+  /// `originalPrice IS NULL OR originalPrice > price`.
+  originalPrice Decimal?     @db.Decimal(12, 2)
 
-  material       String?  @db.VarChar(120)
-  stoneType      String?  @db.VarChar(120)
-  dimensions     String?  @db.VarChar(120)
-  weightGrams    Int?
+  color        String?  @db.VarChar(120)
+  material     String?  @db.VarChar(120)
+  stoneType    String?  @db.VarChar(120)
+  dimensions   String?  @db.VarChar(120)
+  weightGrams  Int?
   specifications Json?
 
   craftingTime String? @db.VarChar(120)

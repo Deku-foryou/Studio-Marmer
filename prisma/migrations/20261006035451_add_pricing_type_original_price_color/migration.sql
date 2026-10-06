@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE `products` ADD COLUMN `color` VARCHAR(120) NULL,
+    ADD COLUMN `originalPrice` DECIMAL(12, 2) NULL,
+    ADD COLUMN `pricingType` ENUM('FIXED', 'STARTING_FROM') NOT NULL DEFAULT 'FIXED';
