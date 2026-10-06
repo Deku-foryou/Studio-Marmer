@@ -18,7 +18,6 @@ export type SortOption =
   | 'featured'
   | 'price-asc'
   | 'price-desc'
-  | 'rating-desc'
   | 'trending';
 
 export interface ProductSpecification {
@@ -34,8 +33,6 @@ export interface Product {
   readonly price: number;
   readonly originalPrice: number;
   readonly discountPercentage: number;
-  readonly rating: number;
-  readonly reviewCount: number;
   readonly stockStatus: StockStatus;
   readonly stockQuantity: number;
   readonly matchScore: number;

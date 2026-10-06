@@ -6,7 +6,6 @@ import { Plus, ArrowUpRight } from 'lucide-react';
 import type { Product } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
-import StarRating from '@/components/ui/StarRating';
 import { useState } from 'react';
 
 interface ProductCardProps {
@@ -106,12 +105,6 @@ export default function ProductCard({ product, onQuickView }: ProductCardProps) 
               {product.title}
             </Link>
           </h3>
-
-          {/* Rating */}
-          <StarRating
-            rating={product.rating}
-            reviewCount={product.reviewCount}
-          />
         </div>
 
         <div>

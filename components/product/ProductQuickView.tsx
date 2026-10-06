@@ -5,7 +5,6 @@ import { X, ShoppingCart, Zap } from 'lucide-react';
 import type { Product } from '@/types/product';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
-import StarRating from '@/components/ui/StarRating';
 import Badge from '@/components/ui/Badge';
 import { useState, useEffect } from 'react';
 
@@ -121,12 +120,6 @@ export default function ProductQuickView({
                   {product.title}
                 </h2>
               </div>
-
-              <StarRating
-                rating={product.rating}
-                reviewCount={product.reviewCount}
-                size="md"
-              />
 
               <p className="text-sm text-[#666666] leading-relaxed font-light">
                 {product.shortDescription}

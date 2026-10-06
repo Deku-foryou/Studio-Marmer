@@ -7,7 +7,6 @@ import { useState } from 'react';
 import { PRODUCTS } from '@/data/products';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
-import StarRating from '@/components/ui/StarRating';
 import { ArrowLeft, ChevronDown, Plus, Minus, Truck, ShieldCheck, RefreshCw } from 'lucide-react';
 
 const EDITORIAL_COPYWRITING: Record<string, string> = {
@@ -120,11 +119,6 @@ export default function ProductDetailPage() {
             >
               {product.title}
             </h1>
-
-            {/* Rating */}
-            <div className="animate-fade-in-up" style={{ animationDelay: '300ms', animationFillMode: 'both' }}>
-              <StarRating rating={product.rating} reviewCount={product.reviewCount} size="md" />
-            </div>
 
             {/* Price */}
             <div

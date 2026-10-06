@@ -38,8 +38,6 @@ export function useFilteredProducts(
         return [...result].sort((a, b) => a.price - b.price);
       case 'price-desc':
         return [...result].sort((a, b) => b.price - a.price);
-      case 'rating-desc':
-        return [...result].sort((a, b) => b.rating - a.rating);
       case 'trending':
         return [...result].sort(
           (a, b) => (b.isTrending ? 1 : 0) - (a.isTrending ? 1 : 0)

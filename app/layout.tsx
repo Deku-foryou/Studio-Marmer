@@ -6,7 +6,6 @@ import { FilterProvider } from '@/context/FilterContext';
 import Navbar from '../components/layout/Navbar';
 import CartDrawer from '../components/layout/CartDrawer';
 import Footer from '../components/layout/Footer';
-import Chatbot from '../components/layout/Chatbot';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -56,7 +55,6 @@ export default function RootLayout({
           <FilterProvider>
             <Navbar />
             <CartDrawer />
-            <Chatbot />
             <main className="flex-1">{children}</main>
             <Footer />
           </FilterProvider>

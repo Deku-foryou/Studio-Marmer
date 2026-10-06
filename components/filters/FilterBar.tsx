@@ -10,7 +10,6 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'featured', label: 'Featured' },
   { value: 'price-asc', label: 'Price: Low → High' },
   { value: 'price-desc', label: 'Price: High → Low' },
-  { value: 'rating-desc', label: 'Highest Rated' },
   { value: 'trending', label: 'Trending' },
 ];
 

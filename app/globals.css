@@ -212,33 +212,6 @@
     animation: draw-check 800ms ease 400ms forwards;
   }
 
-  /* Custom pulsing red shadows and glitch hover for chatbot toggle */
-  @keyframes red-shadow-pulse {
-    0%, 100% {
-      box-shadow: 0 0 12px rgba(239,68,68,0.15), 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-      box-shadow: 0 0 22px rgba(239,68,68,0.35), 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-    }
-  }
-
-  @keyframes red-glitch-shadow {
-    0%, 100% {
-      box-shadow: 0 0 15px rgba(239,68,68,0.6), -2px -2px 0px rgba(239,68,68,0.8), 2px 2px 0px rgba(0,242,254,0.6);
-    }
-    50% {
-      box-shadow: 0 0 20px rgba(239,68,68,0.8), 2px 2px 0px rgba(239,68,68,0.8), -2px -2px 0px rgba(0,242,254,0.6);
-    }
-  }
-
-  .animate-chatbot-pulse {
-    animation: red-shadow-pulse 2.5s infinite ease-in-out;
-  }
-
-  .hover-chatbot-glitch:hover {
-    animation: red-glitch-shadow 0.15s infinite linear;
-  }
-
   /* Link underscores expanding from center */
   .link-underline {
     position: relative;
