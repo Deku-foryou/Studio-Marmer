@@ -28,13 +28,20 @@ export default function Navbar({ settings }: NavbarProps) {
     return () => clearTimeout(timer);
   }, [localSearch, setSearchQuery]);
 
-  // Keep the input in sync when the query is cleared elsewhere.
-  useEffect(() => {
-    if (filters.searchQuery === '' && localSearch !== '') {
-      setLocalSearch('');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.searchQuery]);
+  // Keep the input in sync when the query is cleared elsewhere (for example by
+  // the "Hapus Filter" button in FilterBar).
+  //
+  // This uses React's documented "adjusting state when a prop changes" pattern:
+  // the comparison and both setState calls run during render, so React
+  // re-renders immediately without ever committing an intermediate frame that
+  // shows a stale value. Doing the same inside an effect causes a cascading
+  // render, which is precisely what `react-hooks/set-state-in-effect` reports.
+  const [lastSyncedQuery, setLastSyncedQuery] = useState(filters.searchQuery);
+
+  if (filters.searchQuery !== lastSyncedQuery) {
+    setLastSyncedQuery(filters.searchQuery);
+    setLocalSearch(filters.searchQuery);
+  }
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
