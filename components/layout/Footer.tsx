@@ -8,11 +8,10 @@ export default function Footer() {
           {/* ─── Brand Column ──────────────────────────── */}
           <div className="md:col-span-1">
             <span className="text-[18px] font-bold tracking-[0.2em] text-[#1A1A1A] uppercase">
-              NEXUS
+              STORE
             </span>
             <p className="text-[13px] text-[#999999] leading-relaxed mt-4 max-w-[240px]">
-              The premier destination for luxury tech.
-              Curated precision for the discerning technologist.
+              A curated collection of considered pieces.
             </p>
           </div>
 
@@ -81,13 +80,7 @@ export default function Footer() {
         {/* ─── Bottom Bar ────────────────────────────────────── */}
         <div className="mt-16 pt-8 border-t border-[#E5E1DA] flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-[12px] text-[#C9C4BC] tracking-wide">
-            © {currentYear} NEXUS Store. All rights reserved.
-          </p>
-          <p className="text-[12px] text-[#C9C4BC] tracking-wide">
-            Designed by{' '}
-            <span className="text-[#666666] font-medium">Piyush</span>
-            <span className="mx-2">·</span>
-            <span className="text-[#C9C4BC]">NST HeadStart 2026</span>
+            © {currentYear} Store. All rights reserved.
           </p>
         </div>
       </div>

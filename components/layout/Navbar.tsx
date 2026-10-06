@@ -3,14 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useFilter } from '@/context/FilterContext';
-import { Search, ShoppingBag, User, X } from 'lucide-react';
+import { Search, ShoppingBag, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function Navbar() {
   const { totalItemCount, openDrawer } = useCart();
   const { filters, setSearchQuery } = useFilter();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
@@ -34,14 +33,6 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsProfileOpen(false);
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, []);
-
   const displayCount = totalItemCount > 99 ? '99+' : totalItemCount;
 
   return (
@@ -57,7 +48,7 @@ export default function Navbar() {
           {/* ─── Brand ──────────────────────────────────────────── */}
           <a href="/" className="flex-shrink-0 group">
             <span className="text-[22px] font-bold tracking-[0.2em] text-[#1A1A1A] uppercase select-none">
-              NEXUS
+              STORE
             </span>
           </a>
 
@@ -100,44 +91,6 @@ export default function Navbar() {
             >
               <Search size={18} strokeWidth={1.5} />
             </button>
-
-            {/* Profile */}
-            <div className="relative">
-              <button
-                id="profile-menu-btn"
-                onClick={() => setIsProfileOpen((v) => !v)}
-                className="p-2.5 text-[#666666] hover:text-[#1A1A1A] transition-colors"
-                aria-label="Profile menu"
-                aria-haspopup="true"
-                aria-expanded={isProfileOpen}
-              >
-                <User size={18} strokeWidth={1.5} />
-              </button>
-
-              {isProfileOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setIsProfileOpen(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-[#E5E1DA] rounded-sm p-1 shadow-[0_12px_48px_rgba(0,0,0,0.08)] z-20 animate-fade-down">
-                    <div className="px-4 py-3 border-b border-[#E5E1DA]">
-                      <p className="text-sm font-medium text-[#1A1A1A]">Piyush</p>
-                      <p className="text-[11px] text-[#999999] tracking-wide">piyush@nexus.store</p>
-                    </div>
-                    {['My Orders', 'Wishlist', 'Settings', 'Sign Out'].map((item) => (
-                      <button
-                        key={item}
-                        className="w-full text-left px-4 py-2.5 text-[13px] text-[#666666] hover:text-[#1A1A1A] hover:bg-[#FBF9F6] rounded-sm transition-colors"
-                        onClick={() => setIsProfileOpen(false)}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
 
             {/* Cart */}
             <button

@@ -31,7 +31,7 @@ export default function HeroSection() {
           <p
             className="text-[10px] uppercase tracking-[0.25em] text-[#999999] font-medium mb-6 animate-fade-up"
           >
-            NST HeadStart 2026 — Premium Collection
+            Curated Collection
           </p>
 
           {/* Headline */}
@@ -41,7 +41,7 @@ export default function HeroSection() {
           >
             The Art of
             <br />
-            <span className="font-medium">Modern Technology</span>
+            <span className="font-medium">Craftsmanship</span>
           </h1>
 
           {/* Subtitle */}
@@ -49,8 +49,8 @@ export default function HeroSection() {
             className="text-base sm:text-lg text-[#666666] leading-relaxed max-w-lg mb-10 font-light animate-fade-up"
             style={{ animationDelay: '160ms', animationFillMode: 'both' }}
           >
-            Curated, world-class devices for the discerning technologist.
-            Selected for exceptional material integrity, performance, and aesthetic form.
+            A considered selection of pieces, chosen for material integrity and
+            aesthetic form.
           </p>
 
           {/* CTAs */}
@@ -71,27 +71,6 @@ export default function HeroSection() {
             >
               View Cart
             </button>
-          </div>
-
-          {/* ─── Editorial Stats ───────────────────────────────────── */}
-          <div
-            className="mt-16 flex flex-wrap gap-12 animate-fade-up"
-            style={{ animationDelay: '360ms', animationFillMode: 'both' }}
-          >
-            {[
-              { value: '4.9', label: 'Average Rating' },
-              { value: '50K+', label: 'Orders Shipped' },
-              { value: '2 Year', label: 'Full Warranty' },
-            ].map((stat) => (
-              <div key={stat.label}>
-                <p className="text-2xl font-light text-[#1A1A1A] tracking-tight">
-                  {stat.value}
-                </p>
-                <p className="text-[9px] uppercase tracking-[0.2em] text-[#999999] mt-1.5 font-medium">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
           </div>
         </div>
       </div>

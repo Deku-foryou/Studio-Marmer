@@ -186,7 +186,7 @@ export default function ProductDetailPage() {
                   onClick={() => toggleAccordion('shipping')}
                   className="w-full py-4 flex items-center justify-between text-left text-xs uppercase tracking-widest text-[#1A1A1A] font-medium"
                 >
-                  Premium Shipping & Delivery
+                  Shipping & Delivery
                   <ChevronDown
                     size={14}
                     className={`transition-transform duration-300 ${activeAccordion === 'shipping' ? 'rotate-180' : ''}`}
@@ -199,10 +199,8 @@ export default function ProductDetailPage() {
                 >
                   <div className="text-xs text-[#666666] leading-relaxed font-light space-y-3">
                     <p>
-                      Complimentary express global courier delivery is provided on all orders. Shipments are dispatched within 24 hours of checkout via DHL Express or FedEx Priority.
-                    </p>
-                    <p>
-                      Expected delivery is within 2-3 business days. All packages are insured and require a signature upon arrival to guarantee material protection.
+                      Shipping options and delivery times are confirmed at the
+                      point of order.
                     </p>
                   </div>
                 </div>
@@ -214,7 +212,7 @@ export default function ProductDetailPage() {
                   onClick={() => toggleAccordion('warranty')}
                   className="w-full py-4 flex items-center justify-between text-left text-xs uppercase tracking-widest text-[#1A1A1A] font-medium"
                 >
-                  Warranty Matrix
+                  Care & Warranty
                   <ChevronDown
                     size={14}
                     className={`transition-transform duration-300 ${activeAccordion === 'warranty' ? 'rotate-180' : ''}`}
@@ -226,7 +224,8 @@ export default function ProductDetailPage() {
                   }`}
                 >
                   <p className="text-xs text-[#666666] leading-relaxed font-light">
-                    All products in our collection are backed by a comprehensive, global 2-year Nexus warranty. This covers any manufacturing defects, hardware failure, or performance degradation under standard operating conditions. Dedicated client support is available 24/7.
+                    Care instructions and warranty terms are provided with each
+                    item.
                   </p>
                 </div>
               </div>
@@ -239,11 +238,11 @@ export default function ProductDetailPage() {
             >
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[#666666] font-medium">
                 <Truck size={12} className="text-[#8B7355]" />
-                Free Express Delivery
+                Shipping Available
               </div>
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[#666666] font-medium">
                 <ShieldCheck size={12} className="text-[#8B7355]" />
-                2-Year Warranty
+                Warranty Support
               </div>
             </div>
           </div>

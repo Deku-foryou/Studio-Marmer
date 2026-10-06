@@ -20,24 +20,17 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'NEXUS — Premium Tech Store | NST HeadStart 2026',
+  title: 'STORE',
   description:
-    'Discover the world\'s most exclusive tech gadgets. Audiophile headphones, AI laptops, smart rings, and pro cameras at NEXUS — the luxury tech destination.',
+    'A curated collection of considered pieces, selected for material integrity and aesthetic form.',
   keywords: [
-    'premium tech',
-    'luxury gadgets',
-    'headphones',
-    'laptops',
-    'smart ring',
-    'MacBook',
-    'gaming',
-    'NEXUS store',
+    'curated collection',
+    'craftsmanship',
+    'minimal design',
   ],
-  authors: [{ name: 'Piyush', url: 'https://nexus.store' }],
-  creator: 'Piyush',
   openGraph: {
-    title: 'NEXUS — Premium Tech Store',
-    description: 'The luxury tech destination. Shop audiophile audio, AI laptops, smart rings, and more.',
+    title: 'STORE',
+    description: 'A curated collection of considered pieces.',
     type: 'website',
     locale: 'en_US',
   },

@@ -4,15 +4,12 @@ import Image from 'next/image';
 import { X, ShoppingBag, Minus, Plus, Trash2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
-import CouponInput from '@/components/cart/CouponInput';
 import CartSummary from '@/components/cart/CartSummary';
 import { useState, useEffect } from 'react';
-import CheckoutModal from '@/components/checkout/CheckoutModal';
 
 export default function CartDrawer() {
   const { state, closeDrawer, incrementQty, decrementQty, removeFromCart } =
     useCart();
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -87,7 +84,7 @@ export default function CartDrawer() {
                 Your cart is empty
               </p>
               <p className="text-xs text-[#666666] font-light max-w-[240px] mx-auto leading-relaxed">
-                Add some premium tech selections to your personal collection.
+                Add an item to your collection.
               </p>
             </div>
             <button
@@ -170,15 +167,7 @@ export default function CartDrawer() {
             <div
               className="px-6 pb-8 pt-6 space-y-4 border-t border-[#E5E1DA] bg-white"
             >
-              <CouponInput />
               <CartSummary />
-              <button
-                id="checkout-btn"
-                onClick={() => setIsCheckoutOpen(true)}
-                className="bg-[#1A1A1A] text-white hover:bg-[#333333] transition-colors w-full py-4 text-xs uppercase tracking-widest font-medium"
-              >
-                Proceed to Checkout
-              </button>
               <button
                 onClick={closeDrawer}
                 className="w-full text-center text-xs uppercase tracking-wider text-[#999999] hover:text-[#1A1A1A] transition-colors py-1"
@@ -189,13 +178,6 @@ export default function CartDrawer() {
           </>
         )}
       </div>
-
-      {/* ─── Checkout Modal ───────────────────────────────────────── */}
-      {isCheckoutOpen && (
-        <CheckoutModal
-          onClose={() => setIsCheckoutOpen(false)}
-        />
-      )}
     </>
   );
 }

@@ -1,19 +1,15 @@
 'use client';
 
-import { useState } from 'react';
 import { PRODUCTS } from '../../data/products';
 import { useFilter } from '../../context/FilterContext';
 import { useFilteredProducts } from '../../hooks/useFilteredProducts';
 import ProductCard from './ProductCard';
-import ProductQuickView from './ProductQuickView';
 import FilterBar from '../filters/FilterBar';
-import type { Product } from '../../types/product';
 import { PackageSearch } from 'lucide-react';
 
 export default function ProductGrid() {
   const { filters } = useFilter();
   const filtered = useFilteredProducts(PRODUCTS, filters);
-  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
 
   return (
     <section aria-label="Product catalog">
@@ -50,21 +46,10 @@ export default function ProductGrid() {
               className="animate-fade-up h-full flex flex-col"
               style={{ animationDelay: `${Math.min(index * 50, 400)}ms`, animationFillMode: 'both' }}
             >
-              <ProductCard
-                product={product}
-                onQuickView={setQuickViewProduct}
-              />
+              <ProductCard product={product} />
             </div>
           ))}
         </div>
-      )}
-
-      {/* ─── Quick View Modal ─────────────────────────────── */}
-      {quickViewProduct && (
-        <ProductQuickView
-          product={quickViewProduct}
-          onClose={() => setQuickViewProduct(null)}
-        />
       )}
     </section>
   );

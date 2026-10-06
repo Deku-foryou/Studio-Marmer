@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// NEXUS STORE — Core Domain Types
+// Core Domain Types
 // Strict TypeScript: zero `any`, all interfaces explicitly typed
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -34,8 +34,6 @@ export interface Product {
   readonly originalPrice: number;
   readonly discountPercentage: number;
   readonly stockStatus: StockStatus;
-  readonly stockQuantity: number;
-  readonly matchScore: number;
   readonly isTrending: boolean;
   readonly isNewArrival: boolean;
   readonly imageUrl: string;
@@ -54,9 +52,6 @@ export interface CartItem {
 export interface CartState {
   readonly items: CartItem[];
   readonly isDrawerOpen: boolean;
-  readonly couponCode: string;
-  readonly isCouponApplied: boolean;
-  readonly couponDiscountRate: number;
 }
 
 export interface FilterState {
@@ -66,31 +61,11 @@ export interface FilterState {
   readonly showInStockOnly: boolean;
 }
 
-export interface CheckoutFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  cardNumber: string;
-  cardHolder: string;
-  expiryDate: string;
-  cvv: string;
-}
-
-export type CheckoutFormErrors = Partial<Record<keyof CheckoutFormData, string>>;
-
 export type CartAction =
   | { type: 'ADD_ITEM'; payload: Product }
   | { type: 'REMOVE_ITEM'; payload: string }
   | { type: 'INCREMENT_QTY'; payload: string }
   | { type: 'DECREMENT_QTY'; payload: string }
-  | { type: 'APPLY_COUPON'; payload: string }
-  | { type: 'REMOVE_COUPON' }
   | { type: 'TOGGLE_DRAWER' }
   | { type: 'OPEN_DRAWER' }
   | { type: 'CLOSE_DRAWER' }
@@ -98,8 +73,5 @@ export type CartAction =
 
 export interface PriceBreakdown {
   readonly subtotal: number;
-  readonly couponDiscount: number;
-  readonly taxableAmount: number;
-  readonly estimatedTax: number;
   readonly total: number;
 }

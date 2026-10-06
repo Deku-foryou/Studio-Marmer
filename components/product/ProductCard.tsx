@@ -10,7 +10,6 @@ import { useState } from 'react';
 
 interface ProductCardProps {
   product: Product;
-  onQuickView: (product: Product) => void;
 }
 
 function StatusTag({ product }: { product: Product }) {
@@ -38,7 +37,7 @@ function StatusTag({ product }: { product: Product }) {
   return null;
 }
 
-export default function ProductCard({ product, onQuickView }: ProductCardProps) {
+export default function ProductCard({ product }: ProductCardProps) {
   const { addToCart, openDrawer } = useCart();
   const [isAdding, setIsAdding] = useState(false);
 

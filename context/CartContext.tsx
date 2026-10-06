@@ -19,18 +19,12 @@ import type {
 } from '@/types/product';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const VALID_COUPON = 'NST2026';
-const COUPON_RATE = 0.20;
-const TAX_RATE = 0.085;
 const LS_KEY = 'nexus-cart-v1';
 
 // ─── Initial State ─────────────────────────────────────────────────────────────
 const initialState: CartState = {
   items: [],
   isDrawerOpen: false,
-  couponCode: '',
-  isCouponApplied: false,
-  couponDiscountRate: 0,
 };
 
 // ─── Reducer ───────────────────────────────────────────────────────────────────
@@ -83,24 +77,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { ...state, items: updated };
     }
 
-    case 'APPLY_COUPON': {
-      const isValid = action.payload.trim().toUpperCase() === VALID_COUPON;
-      return {
-        ...state,
-        couponCode: action.payload,
-        isCouponApplied: isValid,
-        couponDiscountRate: isValid ? COUPON_RATE : 0,
-      };
-    }
-
-    case 'REMOVE_COUPON':
-      return {
-        ...state,
-        couponCode: '',
-        isCouponApplied: false,
-        couponDiscountRate: 0,
-      };
-
     case 'TOGGLE_DRAWER':
       return { ...state, isDrawerOpen: !state.isDrawerOpen };
 
@@ -114,9 +90,6 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return {
         ...state,
         items: [],
-        couponCode: '',
-        isCouponApplied: false,
-        couponDiscountRate: 0,
       };
 
     default:
@@ -134,8 +107,6 @@ interface CartContextValue {
   removeFromCart: (productId: string) => void;
   incrementQty: (productId: string) => void;
   decrementQty: (productId: string) => void;
-  applyCoupon: (code: string) => boolean;
-  removeCoupon: () => void;
   toggleDrawer: () => void;
   openDrawer: () => void;
   closeDrawer: () => void;
@@ -160,8 +131,6 @@ export function CartProvider({ children }: CartProviderProps) {
       if (stored) {
         const parsed = JSON.parse(stored) as {
           items?: CartItem[];
-          couponCode?: string;
-          isCouponApplied?: boolean;
         };
         if (parsed.items && Array.isArray(parsed.items)) {
           parsed.items.forEach((item: CartItem) => {
@@ -171,9 +140,6 @@ export function CartProvider({ children }: CartProviderProps) {
               dispatch({ type: 'INCREMENT_QTY', payload: item.product.id });
             }
           });
-        }
-        if (parsed.isCouponApplied && parsed.couponCode) {
-          dispatch({ type: 'APPLY_COUPON', payload: parsed.couponCode });
         }
       }
     } catch {
@@ -192,9 +158,6 @@ export function CartProvider({ children }: CartProviderProps) {
         LS_KEY,
         JSON.stringify({
           items: state.items,
-          couponCode: state.couponCode,
-          isCouponApplied: state.isCouponApplied,
-          couponDiscountRate: state.couponDiscountRate,
         })
       );
     } catch {
@@ -202,9 +165,6 @@ export function CartProvider({ children }: CartProviderProps) {
     }
   }, [
     state.items,
-    state.couponCode,
-    state.isCouponApplied,
-    state.couponDiscountRate,
     isHydrated,
   ]);
 
@@ -218,20 +178,8 @@ export function CartProvider({ children }: CartProviderProps) {
         ) * 100
       ) / 100;
 
-    const couponDiscount =
-      Math.round(subtotal * state.couponDiscountRate * 100) / 100;
-
-    const taxableAmount =
-      Math.round((subtotal - couponDiscount) * 100) / 100;
-
-    const estimatedTax =
-      Math.round(taxableAmount * TAX_RATE * 100) / 100;
-
-    const total =
-      Math.round((taxableAmount + estimatedTax) * 100) / 100;
-
-    return { subtotal, couponDiscount, taxableAmount, estimatedTax, total };
-  }, [state.items, state.couponDiscountRate]);
+    return { subtotal, total: subtotal };
+  }, [state.items]);
 
   // ─── Memoized: Total Count ────────────────────────────────────────────────
   const totalItemCount = useMemo(
@@ -257,15 +205,6 @@ export function CartProvider({ children }: CartProviderProps) {
   const decrementQty = useCallback(
     (productId: string) =>
       dispatch({ type: 'DECREMENT_QTY', payload: productId }),
-    []
-  );
-  const applyCoupon = useCallback((code: string): boolean => {
-    const isValid = code.trim().toUpperCase() === VALID_COUPON;
-    dispatch({ type: 'APPLY_COUPON', payload: code });
-    return isValid;
-  }, []);
-  const removeCoupon = useCallback(
-    () => dispatch({ type: 'REMOVE_COUPON' }),
     []
   );
   const toggleDrawer = useCallback(
@@ -295,8 +234,6 @@ export function CartProvider({ children }: CartProviderProps) {
       removeFromCart,
       incrementQty,
       decrementQty,
-      applyCoupon,
-      removeCoupon,
       toggleDrawer,
       openDrawer,
       closeDrawer,
@@ -310,8 +247,6 @@ export function CartProvider({ children }: CartProviderProps) {
       removeFromCart,
       incrementQty,
       decrementQty,
-      applyCoupon,
-      removeCoupon,
       toggleDrawer,
       openDrawer,
       closeDrawer,
