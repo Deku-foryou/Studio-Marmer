@@ -126,33 +126,3 @@ export interface PriceBreakdown {
   readonly subtotal: number;
   readonly total: number;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DEPRECATED — retained only for data/products.ts
-//
-// The old consumer-electronics dataset is no longer read by any application
-// code (the catalog is served from MySQL via lib/data/products.ts). The file
-// itself is still on disk pending the next cleanup checkpoint, so this shape
-// exists purely to keep it type-checking. Both this interface AND
-// data/products.ts should be deleted together - do not use it for new code.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** @deprecated Use `CatalogProduct`. Retained for data/products.ts only. */
-export interface Product {
-  readonly id: string;
-  readonly title: string;
-  readonly brand: string;
-  readonly category: ProductCategory;
-  readonly price: number;
-  readonly originalPrice: number;
-  readonly discountPercentage: number;
-  readonly stockStatus: StockStatus;
-  readonly isTrending: boolean;
-  readonly isNewArrival: boolean;
-  readonly imageUrl: string;
-  readonly imageAlt: string;
-  readonly shortDescription: string;
-  readonly specifications: readonly ProductSpecification[];
-  readonly tags: readonly string[];
-  readonly sku: string;
-}

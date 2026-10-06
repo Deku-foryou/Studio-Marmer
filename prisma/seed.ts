@@ -6,11 +6,12 @@
  *  - the optional admin account
  *  - a small DUMMY marble development catalog
  *
- * The old consumer-electronics dataset in `data/products.ts` is intentionally
- * NOT converted into marble products - those records describe unrelated
- * products (Sony, Apple, Samsung, ...), so relabelling them would fabricate a
- * catalog. The dummy records below were written from scratch instead, and
- * `data/products.ts` remains untouched on disk.
+ * The old consumer-electronics dataset that previously lived in the project is
+ * intentionally NOT converted into marble products - those records described
+ * unrelated products (Sony, Apple, Samsung, ...), so relabelling them would
+ * fabricate a catalog. The dummy records below were written from scratch
+ * instead. That legacy static dataset has since been deleted; the database is
+ * now the single source of truth for the catalog.
  *
  * Re-running this script is safe: categories and site settings are upserted,
  * products are upserted on their unique `slug`, and the admin user is created
@@ -159,10 +160,10 @@ async function seedAdminUser(): Promise<void> {
 // local development and testing only. Studio Marmer does not yet have real
 // product data, so nothing here represents an actual item, price, or listing.
 //
-// The old consumer-electronics dataset that used to live in data/products.ts
-// was deliberately NOT converted into marble products - that would have
-// invented a catalog from unrelated demo data. These records are original
-// placeholders written from scratch instead.
+// The old consumer-electronics dataset that this project used to carry was
+// deliberately NOT converted into marble products - that would have invented
+// a catalog from unrelated demo data. These records are original placeholders
+// written from scratch instead.
 //
 // To replace them with real data later, delete the rows by slug (or delete the
 // DUMMY_PRODUCTS array and the products will simply stop being re-created).
