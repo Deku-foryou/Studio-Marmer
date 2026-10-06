@@ -42,7 +42,7 @@ export const metadata: Metadata = {
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', Icon: LayoutDashboard, disabled: false },
   { href: '/admin/produk', label: 'Produk', Icon: Package, disabled: false },
-  { href: '/admin/produk', label: 'Kategori', Icon: Layers, disabled: true },
+  { href: '/admin/kategori', label: 'Kategori', Icon: Layers, disabled: false },
   { href: '/admin/produk', label: 'Pengaturan', Icon: Settings2, disabled: true },
 ] as const;
 
