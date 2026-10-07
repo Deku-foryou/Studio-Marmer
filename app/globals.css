@@ -113,6 +113,143 @@
     box-shadow: 0 0 0 3px rgba(196, 85, 61, 0.08);
   }
 
+  /* ─── Storefront hero ───────────────────────────────────── */
+  /*
+   * The hero photograph is a CSS background, not an <Image> in the layout, so
+   * `cover` does the cropping and nothing has to hydrate for it to render.
+   *
+   * ONE source is used at every breakpoint, on purpose. A separate portrait
+   * crop for phones was tried and reverted: it changed the visual identity
+   * between breakpoints, and paired with a heavy mobile veil it left the hero
+   * reading as an empty cream section. The photograph is the hero, so it stays
+   * the same photograph everywhere and only the crop window and veil move.
+   */
+  .hero-backdrop {
+    background-color: var(--bg-cream);
+    background-image: url('/images/hero-marble-vanity-1672.webp');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+  }
+
+  /*
+   * On desktop the copy occupies a fixed-width left column, so the veil is a
+   * horizontal "readable field" of fixed pixel width: strong through the text,
+   * then gone, leaving the right of the hero as clean photograph.
+   *
+   * It is sized in pixels rather than percentages on purpose. A percentage
+   * gradient stretches with the viewport, so the stop that clears the copy at
+   * 1440px would leave it mid-fade at 834px. A fixed width keeps the readable
+   * area tied to the measure of the text, which is what it has to be tied to.
+   *
+   * The stops are measured, not guessed. The photograph contains near-black
+   * marble bowls that, even under a heavy wash, only reach about rgb(150) —
+   * not enough for the #666666 body copy at 4.5:1. So the wash holds ~0.9 alpha
+   * across the whole copy column and only then thins.
+   */
+  .hero-veil {
+    background-image:
+      linear-gradient(
+        to bottom,
+        rgba(251, 249, 246, 0.5) 0%,
+        rgba(251, 249, 246, 0) 22%
+      ),
+      linear-gradient(
+        to right,
+        rgba(251, 249, 246, 0.97) 0%,
+        rgba(251, 249, 246, 0.95) 50%,
+        rgba(251, 249, 246, 0.9) 76%,
+        rgba(251, 249, 246, 0.4) 92%,
+        rgba(251, 249, 246, 0) 100%
+      );
+    background-size: 100% 100%, 100% 100%;
+    background-repeat: no-repeat;
+    background-position: 0 0, 0 0;
+  }
+
+  @media (min-width: 640px) {
+    .hero-veil {
+      background-size: 100% 100%, 760px 100%;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .hero-veil {
+      background-size: 100% 100%, 900px 100%;
+    }
+  }
+
+  /*
+   * A faint bottom wash carries the photograph into the cream section below,
+   * so the hero does not end on a hard horizontal cut.
+   */
+  .hero-foot {
+    background-image: linear-gradient(
+      to bottom,
+      rgba(251, 249, 246, 0) 62%,
+      rgba(251, 249, 246, 0.4) 88%,
+      rgba(251, 249, 246, 0.8) 100%
+    );
+  }
+
+  @media (max-width: 639px) {
+    /*
+     * Phones crop `cover` down to roughly 40% of the landscape frame, so the
+     * focal window is pushed right to take in the vase, tissue box, trays and
+     * coasters instead of the empty left-hand half of the scene.
+     *
+     * 70% was picked from a rendered sweep at 393px, not assumed: it centres
+     * the tissue box and the long oval tray in frame while keeping the vase,
+     * the soap dish and the coasters on screen. 58% was already too far left
+     * (the empty counter took the right half) and 82% began pushing the soap
+     * dish off the left edge.
+     */
+    .hero-backdrop {
+      background-position: 70% center;
+    }
+
+    /*
+     * TWO washes, not one.
+     *
+     * A horizontal-only veil cannot work on a phone. The copy spans the full
+     * width, so it always crosses the dark marble on the right, and the only
+     * veil thick enough to carry 16px text at 4.5:1 across that span is thick
+     * enough to erase the photograph — which is precisely what this change
+     * exists to undo.
+     *
+     * So the protection is split by axis:
+     *   1. horizontal — strong at the left, fully clear by 72%, which keeps the
+     *      right third of the frame at essentially full photographic strength;
+     *   2. vertical  — a soft band through the middle where the copy sits,
+     *      fading to nothing at the top and bottom edges.
+     *
+     * The result leaves the photograph uncovered above and below the copy, so
+     * the picture still reads as a product scene rather than a flat cream
+     * panel, while the text remains legible on top of it. Text and photo
+     * together, not text then photo.
+     */
+    .hero-veil {
+      background-image:
+        linear-gradient(
+          to right,
+          rgba(251, 249, 246, 0.95) 0%,
+          rgba(251, 249, 246, 0.86) 24%,
+          rgba(251, 249, 246, 0.6) 46%,
+          rgba(251, 249, 246, 0.24) 60%,
+          rgba(251, 249, 246, 0) 72%
+        ),
+        linear-gradient(
+          to bottom,
+          rgba(251, 249, 246, 0) 0%,
+          rgba(251, 249, 246, 0.1) 16%,
+          rgba(251, 249, 246, 0.42) 30%,
+          rgba(251, 249, 246, 0.42) 62%,
+          rgba(251, 249, 246, 0.08) 80%,
+          rgba(251, 249, 246, 0) 100%
+        );
+    }
+  }
+
   /* ─── Buttons ───────────────────────────────────────────── */
   .btn-primary {
     background: var(--accent-dark);
