@@ -43,7 +43,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', Icon: LayoutDashboard, disabled: false },
   { href: '/admin/produk', label: 'Produk', Icon: Package, disabled: false },
   { href: '/admin/kategori', label: 'Kategori', Icon: Layers, disabled: false },
-  { href: '/admin/produk', label: 'Pengaturan', Icon: Settings2, disabled: true },
+  { href: '/admin/pengaturan', label: 'Pengaturan', Icon: Settings2, disabled: false },
 ] as const;
 
 export default async function AdminLayout({

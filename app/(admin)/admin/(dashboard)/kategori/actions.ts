@@ -1,9 +1,11 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db/prisma'
 import { createCategorySchema, updateCategorySchema } from '@/lib/validation/category'
 import { resolveUniqueCategorySlug } from '@/lib/data/admin/categories'
 import { auth } from '@/auth'
+import { isAdminRole } from '@/auth.config'
 
 /** Shared error sentinel returned by every mutation. */
 type ErrorResult = { success: false; error: string; field?: string }
@@ -21,21 +23,59 @@ type SuccessResult = {
 export type CategoryActionResult = SuccessResult | ErrorResult
 
 /** ---------------------------------------------------------------
+ *  Shared helpers
+ * --------------------------------------------------------------- */
+
+/**
+ * Returns true only when the caller holds a valid ADMIN or EDITOR session.
+ *
+ * The role always comes from the signed JWT, never from anything the client
+ * sent alongside the form.
+ */
+async function requireAdminEditor(): Promise<boolean> {
+  const session = await auth()
+  const user = session?.user
+
+  if (!user?.id || !isAdminRole(user.role)) return false
+
+  return true
+}
+
+/**
+ * The storefront renders categories inside the statically prerendered home
+ * page, so every mutation has to invalidate it explicitly. Without this a new
+ * or renamed category would not appear on the customer site until a redeploy.
+ */
+function revalidateCategoryViews() {
+  revalidatePath('/admin/kategori')
+  revalidatePath('/admin/kategori/tambah')
+  revalidatePath('/')
+}
+
+/** Reads a form field as a trimmed string, treating a missing entry as blank. */
+function readString(formData: FormData, key: string): string {
+  const value = formData.get(key)
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+/** ---------------------------------------------------------------
  *  CREATE
  * --------------------------------------------------------------- */
-export async function createCategory(formData: FormData): Promise<CategoryActionResult> {
+export async function createCategory(
+  _prevState: CategoryActionResult,
+  formData: FormData
+): Promise<CategoryActionResult> {
   // ---- session / role guard -------------------------------------------------
-  const session = await auth()
-  if (!session || !['ADMIN', 'EDITOR'].includes(session.user.role as string)) {
+  if (!(await requireAdminEditor())) {
     return { success: false, error: 'Anda tidak diotorisasi untuk melakukan action ini.' }
   }
 
   // ---- Zod validation -------------------------------------------------------
   const raw = {
-    name: String(formData.get('name') ?? '').trim(),
-    description: String(formData.get('description') ?? '').trim(),
-    imageUrl: String(formData.get('imageUrl') ?? '').trim(),
-    sortOrder: formData.get('sortOrder') !== null ? Number(formData.get('sortOrder')) : undefined,
+    name: readString(formData, 'name'),
+    description: readString(formData, 'description'),
+    imageUrl: readString(formData, 'imageUrl'),
+    sortOrder: readString(formData, 'sortOrder'),
     isActive: formData.get('isActive') === 'on',
   }
 
@@ -49,7 +89,7 @@ export async function createCategory(formData: FormData): Promise<CategoryAction
     }
   }
 
-  const data = result.data // typed as createCategorySchema._output
+  const data = result.data
 
   // ---- generate deterministic, unique slug -----------------------------------
   const slug = await resolveUniqueCategorySlug(data.name)
@@ -60,19 +100,21 @@ export async function createCategory(formData: FormData): Promise<CategoryAction
       data: {
         name: data.name,
         slug,
-        description: data.description !== '' ? data.description : undefined,
-        imageUrl: data.imageUrl !== '' ? data.imageUrl : undefined,
+        description: data.description ?? null,
+        imageUrl: data.imageUrl ?? null,
         sortOrder: data.sortOrder !== undefined ? Number(data.sortOrder) : 0,
-        isActive: data.isActive,
+        isActive: data.isActive ?? true,
       },
       select: { id: true, name: true, slug: true },
     })
+
+    revalidateCategoryViews()
 
     return {
       success: true,
       data: { id: created.id, name: created.name, slug: created.slug },
     }
-  } catch (e) {
+  } catch {
     // Do not leak raw Prisma errors
     return { success: false, error: 'Gagal menyimpan kategori. Silakan coba lagi.' }
   }
@@ -82,25 +124,28 @@ export async function createCategory(formData: FormData): Promise<CategoryAction
  *  UPDATE
  * --------------------------------------------------------------- */
 export async function updateCategory(
-  id: number,
+  _prevState: CategoryActionResult,
   formData: FormData
 ): Promise<CategoryActionResult> {
   // ---- session / role guard -------------------------------------------------
-  const session = await auth()
-  if (!session || !['ADMIN', 'EDITOR'].includes(session.user.role as string)) {
+  if (!(await requireAdminEditor())) {
     return { success: false, error: 'Anda tidak diotorisasi untuk melakukan action ini.' }
+  }
+
+  // The id is read from the form rather than bound to the action, so a forged
+  // field is validated before it can reach the database.
+  const id = Number(readString(formData, 'id'))
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return { success: false, error: 'Kategori tidak ditemukan.' }
   }
 
   // ---- Zod validation -------------------------------------------------------
   const raw = {
-    name: formData.get('name') ? String(formData.get('name')).trim() : undefined,
-    description:
-      formData.get('description') !== null
-        ? String(formData.get('description')).trim()
-        : undefined,
-    imageUrl: formData.get('imageUrl') ? String(formData.get('imageUrl')).trim() : undefined,
-    sortOrder:
-      formData.get('sortOrder') !== null ? String(formData.get('sortOrder')).trim() : undefined,
+    name: readString(formData, 'name'),
+    description: readString(formData, 'description'),
+    imageUrl: readString(formData, 'imageUrl'),
+    sortOrder: readString(formData, 'sortOrder'),
     isActive: formData.get('isActive') === 'on',
   }
 
@@ -114,9 +159,9 @@ export async function updateCategory(
     }
   }
 
-  const data = result.data // typed as updateCategorySchema._output
+  const data = result.data
 
-  // ---- preserve existing slug - do NOT regenerate ----------------------------
+  // ---- the slug is read only to report it back and to prove the row exists ---
   const existing = await prisma.category.findUnique({
     where: { id },
     select: { slug: true },
@@ -126,29 +171,29 @@ export async function updateCategory(
     return { success: false, error: 'Kategori tidak ditemukan.' }
   }
 
-  const slugToPreserve = existing.slug
-
   // ---- apply updates, keeping the original slug ------------------------------
   try {
     const updated = await prisma.category.update({
       where: { id },
       data: {
         name: data.name,
-        description: data.description !== '' ? data.description : undefined,
-        imageUrl: data.imageUrl !== '' ? data.imageUrl : undefined,
+        description: data.description ?? null,
+        imageUrl: data.imageUrl ?? null,
         sortOrder: data.sortOrder !== undefined ? Number(data.sortOrder) : undefined,
-        isActive: data.isActive,
-        // explicitly keep the slug unchanged
-        slug: slugToPreserve,
+        isActive: data.isActive ?? true,
+        // The slug is the public URL of the category: it is created once from
+        // the first name and deliberately left untouched on every update.
       },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true },
     })
+
+    revalidateCategoryViews()
 
     return {
       success: true,
-      data: { id: updated.id, name: updated.name, slug: updated.slug },
+      data: { id: updated.id, name: updated.name, slug: existing.slug },
     }
-  } catch (e) {
+  } catch {
     return { success: false, error: 'Gagal mengupdate kategori. Silakan coba lagi.' }
   }
 }
@@ -158,8 +203,7 @@ export async function updateCategory(
  * --------------------------------------------------------------- */
 export async function deleteCategory(id: number): Promise<CategoryActionResult> {
   // ---- session / role guard -------------------------------------------------
-  const session = await auth()
-  if (!session || !['ADMIN', 'EDITOR'].includes(session.user.role as string)) {
+  if (!(await requireAdminEditor())) {
     return { success: false, error: 'Anda tidak diotorisasi untuk melakukan action ini.' }
   }
 
@@ -181,8 +225,11 @@ export async function deleteCategory(id: number): Promise<CategoryActionResult> 
     await prisma.category.delete({
       where: { id },
     })
+
+    revalidateCategoryViews()
+
     return { success: true, data: { id, name: '', slug: '' } }
-  } catch (e) {
+  } catch {
     // Database RESTRICT will catch any stray referential issues
     return { success: false, error: 'Gagal menghapus kategori. Silakan coba lagi.' }
   }

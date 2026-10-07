@@ -19,6 +19,9 @@ if (typeof window !== 'undefined') {
 
 import { prisma } from '@/lib/db/prisma';
 
+/** Rows returned per page by `listAdminCategories`. */
+const PAGE_SIZE = 20;
+
 /** Row shape for the admin category list table. */
 export interface AdminCategoryRow {
   id: number;
@@ -44,12 +47,14 @@ export interface AdminCategoryDetail {
   productCount: number;
 }
 
-/** Get all admin categories with optional search, filter, and ordering. */
+/** Get all admin categories with optional search, filter, ordering, and paging. */
 export interface ListAdminCategoriesOptions {
   search?: string;
   isActive?: boolean | null;
   sortBy?: 'sortOrder' | 'name';
   sortDir?: 'asc' | 'desc';
+  /** 1-based page number. Rows per page are the DAL's own PAGE_SIZE. */
+  page?: number;
 }
 
 /** Returns `{ categories: AdminCategoryRow[], total: number }`.
@@ -58,14 +63,19 @@ export async function listAdminCategories(
   opts: ListAdminCategoriesOptions = {}
 ) {
   const { search, isActive, sortBy = 'sortOrder', sortDir = 'asc' } = opts;
+  const page = Math.max(1, opts.page ?? 1);
 
   const where: Record<string, unknown> = {};
 
   if (search) {
+    // No `mode: 'insensitive'`: Prisma only supports it on PostgreSQL and
+    // MongoDB, and passing it on MySQL throws a validation error. The default
+    // utf8mb4 collation is already case-insensitive, so `contains` matches
+    // "vas" against "Vases" without it.
     where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { slug: { contains: search, mode: 'insensitive' } },
-      { description: { contains: search, mode: 'insensitive' } },
+      { name: { contains: search } },
+      { slug: { contains: search } },
+      { description: { contains: search } },
     ];
   }
 
@@ -80,9 +90,15 @@ export async function listAdminCategories(
     prisma.category.findMany({
       where,
       orderBy,
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+      // Counted by the database in the same round trip. A hardcoded 0 here
+      // would silently lie to the admin about which categories still hold
+      // products and therefore cannot be deleted.
+      include: { _count: { select: { products: true } } },
     }),
     prisma.category.count({ where }),
-  ]);
+  ])
 
   return {
     categories: items.map((c) => ({
@@ -93,30 +109,34 @@ export async function listAdminCategories(
       imageUrl: c.imageUrl,
       sortOrder: c.sortOrder,
       isActive: c.isActive,
-      productCount: 0,
+      productCount: c._count.products,
       updatedAt: c.updatedAt,
     })),
     total,
-  };
+  }
 }
 
 /** Get a single category by id, or `null` if not found. */
-export function getAdminCategoryById(id: number): Promise<AdminCategoryDetail | null> {
-  return prisma.category.findUnique({
+export async function getAdminCategoryById(
+  id: number
+): Promise<AdminCategoryDetail | null> {
+  const c = await prisma.category.findUnique({
     where: { id },
-  }).then((c) => {
-    if (!c) return null;
-    return {
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      description: c.description,
-      imageUrl: c.imageUrl,
-      sortOrder: c.sortOrder,
-      isActive: c.isActive,
-      productCount: 0,
-    };
+    include: { _count: { select: { products: true } } },
   });
+
+  if (!c) return null;
+
+  return {
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    description: c.description,
+    imageUrl: c.imageUrl,
+    sortOrder: c.sortOrder,
+    isActive: c.isActive,
+    productCount: c._count.products,
+  };
 }
 
 /** Return the number of products in this category. */

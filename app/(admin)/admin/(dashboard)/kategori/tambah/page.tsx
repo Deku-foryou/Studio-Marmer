@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import CategoryForm from '../Form'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Tambah Kategori',
 }
 

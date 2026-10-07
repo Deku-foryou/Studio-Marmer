@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getAdminCategoryById } from '@/lib/data/admin/categories'
 import CategoryForm from '../../Form'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Edit Kategori',
 }
 
@@ -48,6 +48,7 @@ export default async function CategoryEditPage({
       <CategoryForm
         mode="edit"
         initialValues={{
+          id: data.id,
           name: data.name,
           slug: data.slug,
           description: data.description ?? '',

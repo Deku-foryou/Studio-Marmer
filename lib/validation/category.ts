@@ -35,19 +35,26 @@ const optionalNonNegativeInt = z
 
 /** Create category schema – slug is auto-generated server-side. */
 export const createCategorySchema = z.object({
-  name: z.string().trim().max(100, `Maksimal 100 karakter.`),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Nama kategori wajib diisi.')
+    .max(100, `Maksimal 100 karakter.`),
   description: optionalText(500),
   imageUrl: optionalUrl,
   sortOrder: optionalNonNegativeInt,
   isActive: z.boolean().optional(),
 });
 
-/** Update category schema – only the fields that may be changed.
- *  The slug is preserved server-side; it is NOT part of this schema. */
+/** Update category schema.
+ *
+ * The form always submits every field, so the shape matches the create schema
+ * and a blank name is rejected rather than silently wiping the category. The
+ * slug is preserved server-side and is NOT part of this schema. */
 export const updateCategorySchema = z.object({
-  name: optionalText(100),
-  description: optionalText(500).optional(),
-  imageUrl: optionalUrl.optional(),
-  sortOrder: optionalNonNegativeInt.optional(),
-  isActive: z.boolean().optional(),
+  name: z.string().trim().min(1, 'Nama kategori wajib diisi.').max(100, 'Maksimal 100 karakter.'),
+  description: optionalText(500),
+  imageUrl: optionalUrl,
+  sortOrder: optionalNonNegativeInt,
+  isActive: z.boolean(),
 });
