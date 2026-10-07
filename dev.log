@@ -1,0 +1,55 @@
+
+> studio-marmer@0.1.0 dev
+> next dev
+
+⚠ Port 3000 is in use by process 16580, using available port 3001 instead.
+▲ Next.js 16.2.7 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://192.168.56.1:3001
+- Environments: .env
+✓ Ready in 2.9s
+
+○ Compiling / ...
+ GET / 200 in 16.5s (next.js: 12.8s, application-code: 3.8s)
+ GET / 200 in 12.4s (next.js: 7.9s, application-code: 4.4s)
+ GET /admin/login 200 in 3.9s (next.js: 2.8s, proxy.ts: 20ms, application-code: 1019ms)
+ GET /api/auth/providers 200 in 5.5s (next.js: 5.3s, application-code: 168ms)
+ GET /api/auth/csrf 200 in 78ms (next.js: 41ms, application-code: 37ms)
+ POST /api/auth/callback/credentials? 200 in 488ms (next.js: 21ms, application-code: 467ms)
+ GET /admin 200 in 3.2s (next.js: 2.5s, proxy.ts: 58ms, application-code: 685ms)
+ GET /admin 200 in 609ms (next.js: 37ms, proxy.ts: 176ms, application-code: 396ms)
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+ GET /admin 200 in 224ms (next.js: 29ms, proxy.ts: 37ms, application-code: 157ms)
+ GET /admin 200 in 300ms (next.js: 40ms, proxy.ts: 90ms, application-code: 169ms)
+ GET /admin/produk 200 in 3.7s (next.js: 3.0s, proxy.ts: 31ms, application-code: 690ms)
+ GET /admin/kategori 200 in 2.3s (next.js: 1973ms, proxy.ts: 26ms, application-code: 258ms)
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `checked` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultChecked`. Otherwise, set either `onChange` or `readOnly`. 
+ GET /admin/produk 200 in 342ms (next.js: 21ms, proxy.ts: 53ms, application-code: 267ms)
+ GET /admin/kategori 200 in 188ms (next.js: 28ms, proxy.ts: 45ms, application-code: 115ms)
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `checked` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultChecked`. Otherwise, set either `onChange` or `readOnly`. 
+ GET /admin/produk 200 in 292ms (next.js: 23ms, proxy.ts: 41ms, application-code: 228ms)
+ GET /admin/kategori 200 in 261ms (next.js: 28ms, proxy.ts: 35ms, application-code: 198ms)
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `checked` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultChecked`. Otherwise, set either `onChange` or `readOnly`. 
+ GET /admin/produk 200 in 352ms (next.js: 21ms, proxy.ts: 34ms, application-code: 296ms)
+ GET /admin 200 in 212ms (next.js: 20ms, proxy.ts: 39ms, application-code: 152ms)
+ GET /admin/kategori 200 in 151ms (next.js: 23ms, proxy.ts: 31ms, application-code: 97ms)
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `value` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultValue`. Otherwise, set either `onChange` or `readOnly`. 
+[browser] You provided a `checked` prop to a form field without an `onChange` handler. This will render a read-only field. If the field should be mutable use `defaultChecked`. Otherwise, set either `onChange` or `readOnly`. 
+ GET /admin/produk 200 in 328ms (next.js: 28ms, proxy.ts: 43ms, application-code: 258ms)
+ GET /admin/produk/tambah 200 in 1902ms (next.js: 1725ms, proxy.ts: 37ms, application-code: 139ms)
+ GET / 200 in 1144ms (next.js: 39ms, application-code: 1105ms)

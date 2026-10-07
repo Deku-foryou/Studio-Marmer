@@ -5,7 +5,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation'
 import { Plus, Trash2, X } from 'lucide-react'
 
 import { createCategorySchema, updateCategorySchema } from '@/lib/validation/category'
-import { createCategory, updateCategory, deleteCategory } from '@/app/(admin)/admin/kategori/actions'
+import { createCategory, updateCategory, deleteCategory } from '@/app/(admin)/admin/(dashboard)/kategori/actions'
 
 interface CategoryFormProps {
   mode: 'create' | 'edit'
