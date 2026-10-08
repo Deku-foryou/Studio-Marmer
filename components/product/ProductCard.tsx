@@ -39,14 +39,27 @@ export default function ProductCard({ product }: ProductCardProps) {
         tabIndex={-1}
         aria-hidden="true"
       >
-        <Image
-          src={product.imageUrl}
-          alt={product.imageAlt}
-          fill
-          loading="lazy"
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-        />
+        {product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.imageAlt}
+            fill
+            loading="lazy"
+            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          />
+        ) : (
+          /* No photo yet - a neutral field rather than a stock picture, so an
+             unphotographed piece is never mistaken for a real one. */
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <span className="text-[9px] uppercase tracking-[0.2em] text-[#C9C4BC]">
+              Foto forthcoming
+            </span>
+          </div>
+        )}
 
         {/* One of a kind */}
         {product.isUniquePiece && (

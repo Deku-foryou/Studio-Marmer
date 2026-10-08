@@ -16,9 +16,10 @@ export const metadata: Metadata = {
 /**
  * Gallery page — Server Component.
  *
- * Reads real products from the database. Currently the placeholder images are
- * shown; when the client supplies final photography only the image URLs in the
- * database need updating, not this page.
+ * Reads real products from the database. Until the client's catalog is
+ * published this page shows an empty state; no sample content is substituted.
+ * Products and their images arrive through the admin area, so publishing the
+ * gallery needs no change here.
  */
 export default async function GalleryPage() {
   const [products, settings] = await Promise.all([

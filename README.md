@@ -99,14 +99,15 @@ Models:
 
 `npm run db:seed` is idempotent and safe to re-run. It creates:
 
-- 6 structural categories (Vases, Coasters, Trays, Tables, Sculptures, Decor)
 - the `SiteSettings` singleton
 - an optional admin user, only when `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are set
-- a small **dummy** marble catalog (10 products) for development
 
-> The seeded products are **fictional placeholders**. Prices, descriptions and
-> image URLs are not real. Replace them with the client's actual catalog and
-> photography before launch. Dummy product slugs are all prefixed `dummy-`.
+> The seed creates **no products and no categories**. Both are client-owned
+> content and are added through the admin area; product images are uploaded to
+> Cloudinary from there. Earlier versions of this seed inserted a fictional
+> marble catalog, which was removed because a storefront that displays invented
+> products and prices as if they were real stock is worse than an empty shop.
+> With an empty database the storefront renders its empty states cleanly.
 
 ---
 
@@ -169,7 +170,7 @@ studio-marmer/
 │   ├── schema.prisma
 │   ├── seed.ts
 │   └── migrations/
-├── public/placeholders/     # Generated placeholder imagery (replace later)
+├── public/images/           # Static brand imagery (hero backdrop)
 └── types/                   # Shared TypeScript types
 ```
 
@@ -220,9 +221,11 @@ boundary rather than inheriting the customer shell.
 
 ## Known limitations
 
-- All imagery is a **generated placeholder**. Final client photography has not
-  been supplied.
-- The seeded catalog is **dummy data**, not the real product range.
-- Contact channels (WhatsApp number, Shopee URL, social links) are placeholders
-  in the `SiteSettings` row and must be configured before launch.
+- **There are no products and no categories yet.** The catalog is empty until the
+  client's real range is entered in the admin area. The storefront shows empty
+  states in the meantime and no placeholder imagery is substituted.
+- Final client photography has not been supplied; products with no uploaded image
+  render a neutral "Foto forthcoming" field.
+- Contact channels (WhatsApp number, Shopee URL, social links) must be
+  configured in the `SiteSettings` row before launch.
 - `NEXT_PUBLIC_SITE_URL` must be set to the real domain in production.

@@ -120,17 +120,23 @@ function isNewArrival(createdAt: Date): boolean {
   return Date.now() - createdAt.getTime() <= windowMs;
 }
 
-/** Images arrive already ordered by sortOrder (see ORDER BY below). */
+/**
+ * Images arrive already ordered by sortOrder (see ORDER BY below).
+ *
+ * A product is expected to have at least one image, since images are uploaded
+ * alongside the product in the admin area. If one is missing, this returns an
+ * empty `imageUrl` rather than inventing a placeholder picture: the UI renders a
+ * neutral block for an empty source, which is honest, whereas a stock
+ * placeholder would imply the piece was photographed.
+ */
 function primaryImage(row: ProductRow): {
   imageUrl: string;
   imageAlt: string;
 } {
   const first = row.images[0];
   return {
-    imageUrl: first?.imageUrl ?? '/placeholders/marble-carrara.png',
-    imageAlt:
-      first?.altText?.trim() ||
-      `${row.name} - marble craft product (placeholder image)`,
+    imageUrl: first?.imageUrl ?? '',
+    imageAlt: first?.altText?.trim() || row.name,
   };
 }
 
@@ -234,9 +240,7 @@ function toProductDetail(row: ProductRow): ProductDetail {
     shortDescription: row.shortDescription,
     description: row.description,
     specifications: normalizeSpecifications(row.specifications),
-    imageUrls: row.images.length
-      ? row.images.map((image) => image.imageUrl)
-      : ['/placeholders/marble-carrara.png'],
+    imageUrls: row.images.map((image) => image.imageUrl),
   };
 }
 

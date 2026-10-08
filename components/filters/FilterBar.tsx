@@ -44,6 +44,13 @@ export default function FilterBar({ pagination, categories }: FilterBarProps) {
     filters.showInStockOnly ||
     filters.selectedSort !== 'featured';
 
+  // With no categories the filter row would be an empty band, so the whole
+  // control is skipped. Sort and in-stock still apply to the catalog even
+  // without categories, so they are only hidden when there is nothing to sort.
+  const showFilters = categories.length > 0 || total > 0;
+
+  if (!showFilters) return null;
+
   return (
     <div className="space-y-6">
       {/* ─── Row 1: Categories ─────────────────────────────────────── */}

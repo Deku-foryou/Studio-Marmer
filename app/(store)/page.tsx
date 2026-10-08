@@ -34,6 +34,15 @@ import { PRODUCTS_PER_PAGE, parseCatalogQuery } from '@/lib/catalog-query';
  * `getFeaturedProducts()` and the `isFeatured` column are deliberately kept:
  * the strip is a rendering decision, not a data one, and admin can still manage
  * the flag for it.
+ *
+ * NO MATERIAL SECTION
+ * A "Mengenal jenis marmer" block used to sit here, listing four stone types
+ * with hand-written descriptions hardcoded in JSX. It was removed for the same
+ * reason as the featured strip: the copy described material the client has not
+ * confirmed, and two of the four entries were not natural marble at all. It was
+ * inline markup rather than a component, so there was nothing separate to
+ * delete. It should return as real, client-supplied content - ideally sourced
+ * from product data rather than hardcoded.
  */
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -121,56 +130,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 </h3>
                 <p className="text-xs text-[#666666] leading-relaxed font-light">
                   {item.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Material ────────────────────────────────────────────── */}
-      <section
-        aria-labelledby="bahan-heading"
-        className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-16 sm:py-24"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-10">
-          <div>
-            <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-3">
-              Bahan
-            </span>
-            <h2
-              id="bahan-heading"
-              className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight leading-snug"
-            >
-              Mengenal jenis marmer
-            </h2>
-          </div>
-
-          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {[
-              {
-                name: 'Carrara',
-                note: 'Putih keabu-abuan dengan urat tipis dan lembut.',
-              },
-              {
-                name: 'Travertine',
-                note: 'Krem hangat dengan pori-pori yang khas.',
-              },
-              {
-                name: 'Nero Marquina',
-                note: 'Hitam pekat dengan urat putih yang kontras.',
-              },
-              {
-                name: 'Verde Luisa',
-                note: 'Hijau muda yang tenang, cocok untuk nuansa lembut.',
-              },
-            ].map((stone) => (
-              <div key={stone.name} className="border-t border-[#E5E1DA] pt-4">
-                <h3 className="text-[12px] uppercase tracking-[0.16em] text-[#1A1A1A] font-medium mb-1.5">
-                  {stone.name}
-                </h3>
-                <p className="text-xs text-[#666666] leading-relaxed font-light">
-                  {stone.note}
                 </p>
               </div>
             ))}

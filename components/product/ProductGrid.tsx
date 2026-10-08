@@ -1,5 +1,6 @@
 'use client';
 
+import { useFilter } from '@/context/FilterContext';
 import ProductCard from './ProductCard';
 import Pagination from './Pagination';
 import FilterBar from '../filters/FilterBar';
@@ -37,6 +38,17 @@ export default function ProductGrid({
   pagination,
 }: ProductGridProps) {
   const { total, currentPage, totalPages } = pagination;
+  const { filters } = useFilter();
+
+  // An empty grid means two very different things, and conflating them would
+  // tell a visitor to change filters they never set. With nothing active, the
+  // catalog itself is simply empty - which is the storefront's normal state
+  // before the client's catalog is published.
+  const hasActiveFilters =
+    filters.selectedCategories.length > 0 ||
+    filters.showInStockOnly ||
+    filters.selectedSort !== 'featured' ||
+    filters.searchQuery.trim() !== '';
 
   return (
     <section aria-label="Katalog produk">
@@ -53,10 +65,14 @@ export default function ProductGrid({
           </div>
           <div className="text-center">
             <p className="text-lg font-light text-[#1A1A1A] mb-2">
-              Produk tidak ditemukan
+              {hasActiveFilters
+                ? 'Produk tidak ditemukan'
+                : 'Katalog sedang disiapkan'}
             </p>
             <p className="text-sm text-[#666666] font-light">
-              Coba ubah kata kunci pencarian atau filter yang dipilih.
+              {hasActiveFilters
+                ? 'Coba ubah kata kunci pencarian atau filter yang dipilih.'
+                : 'Belum ada karya yang dipublikasikan. Silakan hubungi kami untuk menanyakan ketersediaan.'}
             </p>
           </div>
         </div>

@@ -29,23 +29,37 @@ export default function ProductImageGallery({
 }: ProductImageGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Defensive: a product should always have at least one image.
-  const images = imageUrls.length > 0 ? imageUrls : ['/placeholders/marble-carrara.png'];
-  const activeSrc = images[Math.min(activeIndex, images.length - 1)];
+  // A product normally has at least one image. When none has been uploaded yet
+  // the frame renders empty instead of substituting a stock photograph, which
+  // would misrepresent a piece the studio has not actually photographed.
+  const images = imageUrls;
+  const activeSrc = images.length > 0 ? images[Math.min(activeIndex, images.length - 1)] : null;
 
   return (
     <div className="flex flex-col gap-3">
       {/* ─── Main image ───────────────────────────────────────────── */}
       <div className="relative aspect-[4/3] w-full overflow-hidden border border-[#E5E1DA] bg-white group">
-        <Image
-          key={activeSrc}
-          src={activeSrc}
-          alt={alt}
-          fill
-          priority
-          className="object-contain mx-auto bg-transparent transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-          sizes="(max-width: 1024px) 100vw, 50vw"
-        />
+        {activeSrc ? (
+          <Image
+            key={activeSrc}
+            src={activeSrc}
+            alt={alt}
+            fill
+            priority
+            className="object-contain mx-auto bg-transparent transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+        ) : (
+          <div
+            role="img"
+            aria-label={`${alt} — belum ada foto`}
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <span className="text-[10px] uppercase tracking-[0.2em] text-[#C9C4BC]">
+              Foto forthcoming
+            </span>
+          </div>
+        )}
 
         {overlay && (
           <div className="absolute top-4 left-4">
