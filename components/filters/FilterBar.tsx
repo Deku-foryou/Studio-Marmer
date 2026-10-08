@@ -14,18 +14,12 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 ];
 
 /**
- * Presentation glyph per category. Categories themselves come from the
- * database; this map only supplies a small icon for known slugs and falls back
- * to a neutral marker for anything the client adds later.
+ * Sort order options.
+ *
+ * Categories carry no icon: the buttons are text-only, which keeps the filter
+ * row consistent with the rest of the type-led design and avoids leaning on
+ * emoji as category art.
  */
-const CATEGORY_ICONS: Record<string, string> = {
-  vases: '🏺',
-  coasters: '☕',
-  trays: '🍽️',
-  tables: '🪑',
-  sculptures: '🗿',
-  decor: '🕯️',
-};
 
 interface FilterBarProps {
   /**
@@ -70,10 +64,7 @@ export default function FilterBar({ pagination, categories }: FilterBarProps) {
               aria-pressed={isActive}
               aria-label={`Filter kategori ${cat.name}`}
             >
-              <span className="text-sm leading-none opacity-80">
-                {CATEGORY_ICONS[cat.slug] ?? '◆'}
-              </span>
-              <span>{cat.name}</span>
+              {cat.name}
             </button>
           );
         })}
@@ -90,7 +81,7 @@ export default function FilterBar({ pagination, categories }: FilterBarProps) {
               value={filters.selectedSort}
               onChange={(e) => setSort(e.target.value as SortOption)}
               className="bg-white border border-[#E5E1DA] text-xs uppercase tracking-wider text-[#1A1A1A] pl-3 pr-8 py-2 appearance-none cursor-pointer rounded-none outline-none focus:border-[#1A1A1A] transition-colors"
-              aria-label="Sort products"
+              aria-label="Urutkan produk"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%231A1A1A' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat',

@@ -11,6 +11,14 @@ import { formatPrice } from '@/lib/utils';
  * hover behaviour) but with commerce-agnostic content: no cart, no brand, no
  * electronics labels. The single action is "Lihat Produk".
  *
+ * There is deliberately no sold-out state here. The only consumer is
+ * ProductGrid, and both of its data sources (`getCatalogProducts` and
+ * `getFeaturedProducts`) filter on `isAvailable: true`, so a sold-out piece can
+ * never reach this component - the overlay and the muted price were unreachable
+ * code. Availability is still shown honestly per product via the isAvailable
+ * flag, and the product detail page keeps its own sold-out handling, which is
+ * reachable there because `getProductBySlug` does not filter.
+ *
  * It holds no state and registers no event handlers, so it is deliberately NOT
  * a Client Component - that keeps it out of the client bundle.
  */
@@ -19,8 +27,6 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const soldOut = !product.isAvailable;
-
   return (
     <article
       className="group flex flex-col h-full bg-white border border-[#E5E1DA] hover:border-[#1A1A1A] p-4 rounded-none transition-all duration-500 ease-out hover:shadow-md"
@@ -52,19 +58,10 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Discount */}
-        {!soldOut && product.discountPercentage > 0 && (
+        {product.discountPercentage > 0 && (
           <div className="absolute top-3 right-3">
             <span className="text-[9px] uppercase tracking-[0.15em] font-semibold text-[#8B7355] bg-white/90 backdrop-blur-sm px-2.5 py-1">
               −{product.discountPercentage}%
-            </span>
-          </div>
-        )}
-
-        {/* Sold out overlay */}
-        {soldOut && (
-          <div className="absolute inset-0 bg-[#FBF9F6]/70 flex items-center justify-center">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-[#666666] border border-[#C9C4BC] bg-white/90 px-4 py-2">
-              Stok Habis
             </span>
           </div>
         )}
@@ -79,7 +76,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               {product.category}
             </span>
             <span className="text-[9px] uppercase tracking-[0.18em] font-medium text-[#8B7355]">
-              {soldOut ? '• Stok Habis' : '• Tersedia'}
+              • Tersedia
             </span>
           </div>
 
@@ -103,11 +100,7 @@ export default function ProductCard({ product }: ProductCardProps) {
               </span>
             )}
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span
-                className={`text-[15px] font-medium tracking-tight ${
-                  soldOut ? 'text-[#999999]' : 'text-[#1A1A1A]'
-                }`}
-              >
+              <span className="text-[15px] font-medium tracking-tight text-[#1A1A1A]">
                 {formatPrice(product.price)}
               </span>
               {product.originalPrice !== null &&

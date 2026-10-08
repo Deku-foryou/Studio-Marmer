@@ -1,11 +1,9 @@
 import HeroSection from '@/components/layout/HeroSection';
 import CategoriesSection from '@/components/sections/CategoriesSection';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
-import ProductCard from '@/components/product/ProductCard';
 import ProductGrid from '@/components/product/ProductGrid';
 import { FilterProvider } from '@/context/FilterContext';
 import {
-  getFeaturedProducts,
   getCategories,
   getCatalogProducts,
   getProductCountsByCategory,
@@ -27,6 +25,15 @@ import { PRODUCTS_PER_PAGE, parseCatalogQuery } from '@/lib/catalog-query';
  * data access layer for exactly one page of 8 products. Reading searchParams
  * makes this route dynamic - which is the point: the result set has to be
  * queried per request for `?page=2` to mean anything.
+ *
+ * NO FEATURED STRIP
+ * A "Produk Unggulan" strip used to sit between the category strip and the
+ * about section. It was removed because `isFeatured` and the catalog's default
+ * sort select the same rows, so every product it showed reappeared on page 1 of
+ * the catalog directly below - the homepage listed the same four products twice.
+ * `getFeaturedProducts()` and the `isFeatured` column are deliberately kept:
+ * the strip is a rendering decision, not a data one, and admin can still manage
+ * the flag for it.
  */
 interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -36,10 +43,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const query = parseCatalogQuery(params);
 
-  const [settings, categories, featured, counts, catalog] = await Promise.all([
+  const [settings, categories, counts, catalog] = await Promise.all([
     getSiteSettings(),
     getCategories(),
-    getFeaturedProducts(),
     getProductCountsByCategory(),
     getCatalogProducts({
       page: query.page,
@@ -56,45 +62,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <HeroSection settings={settings} />
 
       <CategoriesSection categories={categories} counts={counts} />
-
-      {/* ─── Featured ────────────────────────────────────────────── */}
-      {featured.length > 0 && (
-        <section
-          aria-labelledby="unggulan-heading"
-          className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20"
-        >
-          <div className="mb-8 sm:mb-10 border-b border-[#E5E1DA] pb-8">
-            <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-2">
-              Pilihan
-            </span>
-            <h2
-              id="unggulan-heading"
-              className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight mb-2"
-            >
-              Produk Unggulan
-            </h2>
-            <p className="text-[#666666] text-sm max-w-md font-light">
-              Sebagian karya yang paling sering ditanyakan, dengan corak marmer
-              yang dipilih satu per satu.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featured.slice(0, 4).map((product, index) => (
-              <div
-                key={product.id}
-                className="animate-fade-up h-full"
-                style={{
-                  animationDelay: `${Math.min(index * 60, 360)}ms`,
-                  animationFillMode: 'both',
-                }}
-              >
-                <ProductCard product={product} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ─── About ───────────────────────────────────────────────── */}
       <section

@@ -180,9 +180,11 @@ export default function Footer({ settings }: FooterProps) {
           <p className="text-[11px] text-[#C9C4BC] tracking-wide">
             © {currentYear} {BRAND.name}. Seluruh hak cipta dilindungi.
           </p>
-          <p className="text-[11px] text-[#C9C4BC] tracking-wide">
-            Pembelian diproses melalui Shopee
-          </p>
+          {/* A "Pembelian diproses melalui Shopee" note used to sit here. It was
+              removed because `SiteSettings.shopeeUrl` is still null, so the
+              Shopee link above never renders and the claim contradicts the
+              footer. The `shopeeUrl` field and its conditional link are kept -
+              restore the note when the client's storefront URL is in place. */}
         </div>
       </div>
     </footer>

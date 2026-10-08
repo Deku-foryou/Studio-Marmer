@@ -39,7 +39,7 @@ export default function ProductGrid({
   const { total, currentPage, totalPages } = pagination;
 
   return (
-    <section aria-label="Product catalog">
+    <section aria-label="Katalog produk">
       {/* ─── Filters ──────────────────────────────────────── */}
       <div className="mb-8">
         <FilterBar pagination={pagination} categories={categories} />
@@ -65,7 +65,7 @@ export default function ProductGrid({
           <div
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             role="list"
-            aria-label="Products"
+            aria-label="Daftar produk"
           >
             {products.map((product, index) => (
               <div

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { CatalogCategory } from '@/types/product';
 
 /**
@@ -7,6 +8,9 @@ import type { CatalogCategory } from '@/types/product';
  *
  * Categories are database-driven; nothing is hardcoded here, so a new
  * category created by the client appears automatically.
+ *
+ * Only categories that currently have at least one available product are
+ * listed, and the grid adapts its column count to however many remain.
  */
 
 interface CategoriesSectionProps {
@@ -19,7 +23,14 @@ export default function CategoriesSection({
   categories,
   counts,
 }: CategoriesSectionProps) {
-  if (categories.length === 0) return null;
+  // Categories with nothing in them are left out of the strip. They still exist
+  // in the database and still render in the catalog FilterBar - this only hides
+  // the "0 produk" tiles, which read as broken rather than as "coming soon".
+  const populated = categories.filter(
+    (category) => (counts[category.slug] ?? 0) > 0
+  );
+
+  if (populated.length === 0) return null;
 
   return (
     <section
@@ -40,8 +51,19 @@ export default function CategoriesSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-[#E5E1DA] border border-[#E5E1DA]">
-        {categories.map((category) => {
+      {/* Column count follows the number of visible tiles so the strip never
+          leaves a row of empty cells behind. */}
+      <div
+        className={cn(
+          'grid grid-cols-2 gap-px bg-[#E5E1DA] border border-[#E5E1DA]',
+          populated.length >= 6 && 'sm:grid-cols-3 lg:grid-cols-6',
+          populated.length === 5 && 'sm:grid-cols-3 lg:grid-cols-5',
+          populated.length === 4 && 'sm:grid-cols-2 lg:grid-cols-4',
+          populated.length === 3 && 'sm:grid-cols-3',
+          populated.length === 2 && 'grid-cols-2'
+        )}
+      >
+        {populated.map((category) => {
           const count = counts[category.slug] ?? 0;
           return (
             <Link
