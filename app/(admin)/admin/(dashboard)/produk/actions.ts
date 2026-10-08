@@ -17,6 +17,7 @@ import {
   specificationsToJson,
   updateProductSchema,
 } from '@/lib/validation/product';
+import type { ProductFormState } from '@/lib/validation/product-action-state';
 
 /**
  * Product mutations for the admin area.
@@ -33,14 +34,11 @@ import {
  * returned to the client.
  */
 
-export type ProductFormState = {
-  status: 'idle' | 'error' | 'success';
-  message?: string;
-  /** Field-level messages, keyed by form field name. */
-  fieldErrors?: Record<string, string>;
-};
-
-export const IDLE_STATE: ProductFormState = { status: 'idle' };
+/**
+ * `ProductFormState` and `IDLE_STATE` are imported, not defined, here: a
+ * `'use server'` module may only export async functions. See
+ * lib/validation/product-action-state.ts for the full explanation.
+ */
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 

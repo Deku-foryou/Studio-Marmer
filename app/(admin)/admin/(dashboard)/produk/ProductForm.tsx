@@ -7,12 +7,11 @@ import { Plus, Trash2, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 import type { AdminCategoryRow, AdminProductDetail } from '@/lib/data/admin/products';
 import ProductImageUploader from './ProductImageUploader';
+import { createProduct, updateProduct } from './actions';
 import {
   IDLE_STATE,
-  createProduct,
-  updateProduct,
   type ProductFormState,
-} from './actions';
+} from '@/lib/validation/product-action-state';
 
 /**
  * Product create/edit form — Client Component.

@@ -60,7 +60,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={inter.variable}>
+    // `data-scroll-behavior="smooth"` tells Next.js that the smooth scrolling in
+    // globals.css is deliberate, so route transitions can opt out of it instead
+    // of animating the viewport on every navigation. Declaring it here is what
+    // silences Next's runtime warning while keeping the effect for in-page
+    // anchors such as /#katalog.
+    <html lang="id" className={inter.variable} data-scroll-behavior="smooth">
       <body className="bg-[#FBF9F6] text-[#1A1A1A] font-[family-name:var(--font-inter)] antialiased min-h-screen flex flex-col">
         {children}
       </body>
