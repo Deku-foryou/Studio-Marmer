@@ -30,7 +30,18 @@ export default async function CategoryTambahPage() {
         disimpan ulang.
       </p>
 
-      <CategoryForm mode="create" initialValues={{ name: '', slug: '', description: '', imageUrl: '', sortOrder: 0, isActive: true }} />
+      <CategoryForm
+        mode="create"
+        initialValues={{
+          name: '',
+          slug: '',
+          description: '',
+          imageUrl: '',
+          publicId: '',
+          sortOrder: 0,
+          isActive: true,
+        }}
+      />
     </main>
   )
 }

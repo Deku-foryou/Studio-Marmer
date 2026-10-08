@@ -53,6 +53,7 @@ export default async function CategoryEditPage({
           slug: data.slug,
           description: data.description ?? '',
           imageUrl: data.imageUrl ?? '',
+          publicId: data.publicId ?? '',
           sortOrder: data.sortOrder,
           isActive: data.isActive,
         }}

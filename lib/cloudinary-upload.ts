@@ -37,6 +37,22 @@ export const IMAGE_INPUT_ACCEPT = 'image/jpeg,image/png,image/webp,.jpg,.jpeg';
 /** Hard cap per image, in bytes. */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
+/**
+ * Media library folders, one per content type.
+ *
+ * Keeping them in one place is what lets every admin surface share this module
+ * while still filing assets where they belong. Products keep their existing
+ * folder, so no product URL changes.
+ */
+export const CLOUDINARY_FOLDERS = {
+  product: 'studio-marmer/products',
+  category: 'studio-marmer/categories',
+  /** Reserved for a later phase; declared here so the convention is obvious. */
+  site: 'studio-marmer/site',
+} as const;
+
+export type CloudinaryMediaKind = keyof typeof CLOUDINARY_FOLDERS;
+
 export type UploadedImage = {
   /** Cloudinary `secure_url` - the https delivery URL that goes in the DB. */
   imageUrl: string;
@@ -89,7 +105,7 @@ export function validateImageFile(file: File): void {
  */
 export async function uploadProductImage(
   file: File,
-  folder = 'studio-marmer/products'
+  folder: string = CLOUDINARY_FOLDERS.product
 ): Promise<UploadedImage> {
   if (!isConfigured()) {
     throw new ImageUploadError(

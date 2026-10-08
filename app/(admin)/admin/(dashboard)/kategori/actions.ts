@@ -2,7 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db/prisma'
-import { createCategorySchema, updateCategorySchema } from '@/lib/validation/category'
+import {
+  createCategorySchema,
+  updateCategorySchema,
+  toCategoryImageColumns,
+} from '@/lib/validation/category'
 import { resolveUniqueCategorySlug } from '@/lib/data/admin/categories'
 import { auth } from '@/auth'
 import { isAdminRole } from '@/auth.config'
@@ -75,6 +79,7 @@ export async function createCategory(
     name: readString(formData, 'name'),
     description: readString(formData, 'description'),
     imageUrl: readString(formData, 'imageUrl'),
+    publicId: readString(formData, 'publicId'),
     sortOrder: readString(formData, 'sortOrder'),
     isActive: formData.get('isActive') === 'on',
   }
@@ -101,7 +106,9 @@ export async function createCategory(
         name: data.name,
         slug,
         description: data.description ?? null,
-        imageUrl: data.imageUrl ?? null,
+        // imageUrl and publicId always move together: an uploaded image brings
+        // both, and clearing the image clears both.
+        ...toCategoryImageColumns(data),
         sortOrder: data.sortOrder !== undefined ? Number(data.sortOrder) : 0,
         isActive: data.isActive ?? true,
       },
@@ -145,6 +152,7 @@ export async function updateCategory(
     name: readString(formData, 'name'),
     description: readString(formData, 'description'),
     imageUrl: readString(formData, 'imageUrl'),
+    publicId: readString(formData, 'publicId'),
     sortOrder: readString(formData, 'sortOrder'),
     isActive: formData.get('isActive') === 'on',
   }
@@ -172,13 +180,24 @@ export async function updateCategory(
   }
 
   // ---- apply updates, keeping the original slug ------------------------------
+  //
+  // IMAGE HANDLING
+  // The submitted image fields are authoritative: keeping the existing photo is
+  // simply a matter of the form re-submitting its values, and removing it is
+  // submitting blanks. So this writes the pair as given rather than special
+  // casing "unchanged".
+  //
+  // Replacing an image leaves the previous Cloudinary asset in place. Deleting
+  // remote media needs a trusted server-side context that this codebase does not
+  // have yet, and losing a photo the admin may still want is far worse than
+  // leaving an unreferenced asset for later cleanup.
   try {
     const updated = await prisma.category.update({
       where: { id },
       data: {
         name: data.name,
         description: data.description ?? null,
-        imageUrl: data.imageUrl ?? null,
+        ...toCategoryImageColumns(data),
         sortOrder: data.sortOrder !== undefined ? Number(data.sortOrder) : undefined,
         isActive: data.isActive ?? true,
         // The slug is the public URL of the category: it is created once from

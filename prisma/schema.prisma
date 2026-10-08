@@ -38,7 +38,13 @@ model Category {
   name        String   @db.VarChar(100)
   slug        String   @unique @db.VarChar(120)
   description String?  @db.Text
+  /// Cloudinary delivery URL for the category photo. Nullable — a category is
+  /// perfectly valid without one.
   imageUrl    String?  @db.VarChar(500)
+  /// Cloudinary asset id behind `imageUrl`. Stored so the remote asset can be
+  /// identified for later replacement or cleanup instead of being inferred from
+  /// the delivery URL. Always written and cleared together with `imageUrl`.
+  publicId    String?  @db.VarChar(255)
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())

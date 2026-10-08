@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowLeft, Pencil } from 'lucide-react'
 
 import { listAdminCategories } from '@/lib/data/admin/categories'
@@ -190,17 +191,43 @@ export default async function CategoryPage({ searchParams }: { searchParams: Sea
                   className="border-b border-[#E5E1DA] last:border-b-0 hover:bg-[#FBF9F6] transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/kategori/${category.id}/edit`}
-                      className="block text-[13px] font-medium text-[#1A1A1A] hover:underline truncate max-w-[240px]"
-                    >
-                      {category.name}
-                    </Link>
-                    {category.description && (
-                      <p className="text-[10px] text-[#C9C4BC] truncate max-w-[240px]">
-                        {category.description}
-                      </p>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {/* Thumbnail inside the existing name cell rather than a new
+                          column: the list stays the same shape, but an admin can
+                          see at a glance which categories actually have art. */}
+                      <div className="relative w-10 h-10 shrink-0 border border-[#E5E1DA] bg-[#F3F1EE] overflow-hidden">
+                        {category.imageUrl ? (
+                          <Image
+                            src={category.imageUrl}
+                            alt=""
+                            fill
+                            sizes="40px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden="true"
+                            className="flex items-center justify-center h-full text-[8px] uppercase tracking-[0.12em] text-[#C9C4BC]"
+                          >
+                            —
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <Link
+                          href={`/admin/kategori/${category.id}/edit`}
+                          className="block text-[13px] font-medium text-[#1A1A1A] hover:underline truncate max-w-[240px]"
+                        >
+                          {category.name}
+                        </Link>
+                        {category.description && (
+                          <p className="text-[10px] text-[#C9C4BC] truncate max-w-[240px]">
+                            {category.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </td>
 
                   <td className="px-4 py-3 text-[11px] text-[#C9C4BC] font-light whitespace-nowrap">

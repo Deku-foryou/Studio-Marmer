@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, Loader2, Plus, X } from 'lucide-react';
 
+import CategoryImageUploader from './CategoryImageUploader';
 import {
   createCategory,
   updateCategory,
@@ -36,6 +37,8 @@ interface CategoryFormProps {
     slug: string;
     description: string;
     imageUrl: string;
+    /** Cloudinary asset id behind imageUrl, when there is one. */
+    publicId: string;
     sortOrder: number;
     isActive: boolean;
   };
@@ -177,27 +180,16 @@ export default function CategoryForm({ mode, initialValues }: CategoryFormProps)
           />
         </div>
 
-        <div>
-          <label
-            htmlFor="imageUrl"
-            className="block text-[10px] uppercase tracking-[0.14em] text-[#666666] font-medium mb-1.5"
-          >
-            URL gambar (opsional)
-          </label>
-          <input
-            id="imageUrl"
-            type="text"
-            name="imageUrl"
-            maxLength={500}
-            defaultValue={initialValues.imageUrl}
-            placeholder="https://shopee.co.id/... atau /placeholders/..."
-            className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
-            aria-invalid={failedField === 'imageUrl'}
-          />
-          <FieldError
-            message={failedField === 'imageUrl' && !state.success ? state.error : undefined}
-          />
-        </div>
+        {/* Image is uploaded to Cloudinary from the browser; the uploader writes
+            imageUrl + publicId into hidden fields, so there is no manual URL
+            input to mistype. */}
+        <CategoryImageUploader
+          initialImageUrl={initialValues.imageUrl}
+          initialPublicId={initialValues.publicId}
+          fieldError={
+            failedField === 'imageUrl' && !state.success ? state.error : undefined
+          }
+        />
 
         <div>
           <label

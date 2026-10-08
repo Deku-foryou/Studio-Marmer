@@ -29,6 +29,8 @@ export interface AdminCategoryRow {
   slug: string;
   description: string | null;
   imageUrl: string | null;
+  /** Cloudinary asset id, when the image is hosted there. */
+  publicId: string | null;
   sortOrder: number;
   isActive: boolean;
   productCount: number;
@@ -42,6 +44,8 @@ export interface AdminCategoryDetail {
   slug: string;
   description: string | null;
   imageUrl: string | null;
+  /** Cloudinary asset id, so the edit form can re-submit it unchanged. */
+  publicId: string | null;
   sortOrder: number;
   isActive: boolean;
   productCount: number;
@@ -107,6 +111,7 @@ export async function listAdminCategories(
       slug: c.slug,
       description: c.description,
       imageUrl: c.imageUrl,
+      publicId: c.publicId,
       sortOrder: c.sortOrder,
       isActive: c.isActive,
       productCount: c._count.products,
@@ -133,6 +138,7 @@ export async function getAdminCategoryById(
     slug: c.slug,
     description: c.description,
     imageUrl: c.imageUrl,
+    publicId: c.publicId,
     sortOrder: c.sortOrder,
     isActive: c.isActive,
     productCount: c._count.products,
