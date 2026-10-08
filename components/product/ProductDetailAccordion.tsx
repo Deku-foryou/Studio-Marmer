@@ -9,6 +9,19 @@ import type { ProductSpecification } from '@/types/product';
  *
  * The parent page is a Server Component; only this accordion needs state, so
  * it is isolated here.
+ *
+ * SCOPE
+ * Only the two factual disclosures remain - Spesifikasi and Material &
+ *Dimensi. "Pembuatan" and "Perawatan" were removed: their copy was generic
+ * boilerplate repeated on every product rather than anything specific to the
+ * piece, and both were duplicated elsewhere (crafting time is already shown as a
+ * chip in the info column, and care instructions are the wrong place for a
+ * marble studio to bury the facts). Each row is a self-contained
+ * `border-b` block, so dropping two of them closes the gap completely - no
+ * residual spacing is left behind.
+ *
+ * `craftingTime` is deliberately no longer a prop here. The value is untouched
+ * in the product data; the info column still renders it as a chip.
  */
 
 interface ProductDetailAccordionProps {
@@ -18,7 +31,6 @@ interface ProductDetailAccordionProps {
   color: string;
   dimensions: string;
   weightGrams: number;
-  craftingTime: string | null;
 }
 
 const ANIMATION = {
@@ -33,7 +45,6 @@ export default function ProductDetailAccordion({
   color,
   dimensions,
   weightGrams,
-  craftingTime,
 }: ProductDetailAccordionProps) {
   const [active, setActive] = useState<string | null>('specs');
 
@@ -117,49 +128,6 @@ export default function ProductDetailAccordion({
               </div>
             ))}
           </dl>
-        </div>
-      </div>
-
-      {/* ─── Pembuatan ────────────────────────────────────────────── */}
-      <div className="border-b border-[#E5E1DA]">
-        <button
-          onClick={() => toggle('crafting')}
-          aria-expanded={active === 'crafting'}
-          className="w-full py-4 flex items-center justify-between text-left text-xs uppercase tracking-widest text-[#1A1A1A] font-medium"
-        >
-          Pembuatan
-          <ChevronDown
-            size={14}
-            className={`transition-transform duration-300 ${active === 'crafting' ? 'rotate-180' : ''}`}
-          />
-        </button>
-        <div className={panel(active === 'crafting')}>
-          <p className="text-xs text-[#666666] leading-relaxed font-light">
-            {craftingTime
-              ? `Estimasi waktu pembuatan ${craftingTime}. Setiap unit marmer dikerjakan dengan tangan, sehingga corak dan ukurannya dapat berbeda satu sama lain.`
-              : 'Waktu pembuatan dapat dikonfirmasi melalui WhatsApp.'}
-          </p>
-        </div>
-      </div>
-
-      {/* ─── Perawatan ────────────────────────────────────────────── */}
-      <div className="border-b border-[#E5E1DA]">
-        <button
-          onClick={() => toggle('care')}
-          aria-expanded={active === 'care'}
-          className="w-full py-4 flex items-center justify-between text-left text-xs uppercase tracking-widest text-[#1A1A1A] font-medium"
-        >
-          Perawatan
-          <ChevronDown
-            size={14}
-            className={`transition-transform duration-300 ${active === 'care' ? 'rotate-180' : ''}`}
-          />
-        </button>
-        <div className={panel(active === 'care')}>
-          <p className="text-xs text-[#666666] leading-relaxed font-light">
-            Bersihkan dengan kain lembut yang lembap. Hindari cairan pembersih
-            asam dan benturan keras karena dapat merusak permukaan marmer.
-          </p>
         </div>
       </div>
     </div>

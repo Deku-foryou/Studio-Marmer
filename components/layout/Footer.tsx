@@ -10,6 +10,16 @@ import type { SiteSettingsDTO } from '@/types/site';
  * Internal links point at real routes (never `href="#"`). External channels
  * are rendered only when configured in `site_settings`, so the footer degrades
  * gracefully while the client finishes setting up their accounts.
+ *
+ * DARK THEME
+ * The footer is the storefront's closing statement, so it inverts to charcoal
+ * (#171717 - deliberately not #000000, which reads as a hole rather than a
+ * surface). Structure, spacing, links and the column layout are untouched; only
+ * the colour tokens changed. Measured contrast on #171717:
+ *   wordmark / headings  #F5F3F0 -> 16.2:1
+ *   links / description #A3A09B ->  7.1:1
+ *   copyright            #8A8681 ->  4.9:1  (AA at 11px)
+ *   hairline             #2E2E2E ->  1.4:1  (presentational only)
  */
 
 interface FooterProps {
@@ -37,32 +47,32 @@ export default function Footer({ settings }: FooterProps) {
   );
 
   return (
-    <footer className="border-t border-[#E5E1DA] mt-16 sm:mt-24">
+    <footer className="bg-[#171717] border-t border-[#2E2E2E] mt-16 sm:mt-24">
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-14 sm:py-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-14">
           {/* ─── Brand ────────────────────────────────────────────── */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <span className="block text-[16px] font-light tracking-[0.18em] uppercase text-[#1A1A1A] leading-tight">
+            <span className="block text-[16px] font-light tracking-[0.18em] uppercase text-[#F5F3F0] leading-tight">
               {BRAND.nameTop}
             </span>
-            <span className="block text-[16px] font-medium tracking-[0.18em] uppercase text-[#1A1A1A] leading-tight">
+            <span className="block text-[16px] font-medium tracking-[0.18em] uppercase text-[#F5F3F0] leading-tight">
               {BRAND.nameBottom}
             </span>
-            <p className="text-[12px] text-[#999999] leading-relaxed mt-4 max-w-[260px]">
+            <p className="text-[12px] text-[#A3A09B] leading-relaxed mt-4 max-w-[260px]">
               {BRAND.description}
             </p>
           </div>
 
           {/* ─── Navigate ─────────────────────────────────────────── */}
           <nav aria-label="Navigasi footer">
-            <h2 className="text-[10px] font-medium text-[#1A1A1A] uppercase tracking-[0.2em] mb-5">
+            <h2 className="text-[10px] font-medium text-[#F5F3F0] uppercase tracking-[0.2em] mb-5">
               Jelajahi
             </h2>
             <ul className="space-y-3">
               <li>
                 <Link
                   href="/#katalog"
-                  className="text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                  className="text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
                 >
                   Katalog
                 </Link>
@@ -70,7 +80,7 @@ export default function Footer({ settings }: FooterProps) {
               <li>
                 <Link
                   href="/tentang-kami"
-                  className="text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                  className="text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
                 >
                   Tentang Kami
                 </Link>
@@ -78,7 +88,7 @@ export default function Footer({ settings }: FooterProps) {
               <li>
                 <Link
                   href="/galeri"
-                  className="text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                  className="text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
                 >
                   Galeri
                 </Link>
@@ -86,7 +96,7 @@ export default function Footer({ settings }: FooterProps) {
               <li>
                 <Link
                   href="/kontak"
-                  className="text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                  className="text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
                 >
                   Kontak
                 </Link>
@@ -96,7 +106,7 @@ export default function Footer({ settings }: FooterProps) {
 
           {/* ─── Beli / Hubungi ───────────────────────────────────── */}
           <div>
-            <h2 className="text-[10px] font-medium text-[#1A1A1A] uppercase tracking-[0.2em] mb-5">
+            <h2 className="text-[10px] font-medium text-[#F5F3F0] uppercase tracking-[0.2em] mb-5">
               Pembelian
             </h2>
             <ul className="space-y-3">
@@ -106,7 +116,7 @@ export default function Footer({ settings }: FooterProps) {
                     href={whatsappHref}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                    className="inline-flex items-center gap-2 text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
                   >
                     <MessageCircle size={13} strokeWidth={1.5} />
                     WhatsApp
@@ -119,7 +129,7 @@ export default function Footer({ settings }: FooterProps) {
                     href={settings.shopeeUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                    className="inline-flex items-center gap-2 text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
                   >
                     <ShoppingBag size={13} strokeWidth={1.5} />
                     Shopee
@@ -131,7 +141,7 @@ export default function Footer({ settings }: FooterProps) {
 
           {/* ─── Social + contact details ──────────────────────────── */}
           <div>
-            <h2 className="text-[10px] font-medium text-[#1A1A1A] uppercase tracking-[0.2em] mb-5">
+            <h2 className="text-[10px] font-medium text-[#F5F3F0] uppercase tracking-[0.2em] mb-5">
               Ikuti &amp; Hubungi
             </h2>
 
@@ -143,7 +153,7 @@ export default function Footer({ settings }: FooterProps) {
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                      className="inline-flex items-center gap-2 text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
                     >
                       <Icon size={13} strokeWidth={1.5} />
                       {label}
@@ -158,7 +168,7 @@ export default function Footer({ settings }: FooterProps) {
                 <li>
                   <a
                     href={`mailto:${settings.email}`}
-                    className="inline-flex items-start gap-2 text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300 break-all"
+                    className="inline-flex items-start gap-2 text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300 break-all"
                   >
                     <Mail size={13} strokeWidth={1.5} className="mt-0.5 flex-shrink-0" />
                     {settings.email}
@@ -166,7 +176,7 @@ export default function Footer({ settings }: FooterProps) {
                 </li>
               )}
               {settings.address && (
-                <li className="flex items-start gap-2 text-[12px] text-[#666666] leading-relaxed">
+                <li className="flex items-start gap-2 text-[12px] text-[#A3A09B] leading-relaxed">
                   <MapPin size={13} strokeWidth={1.5} className="mt-0.5 flex-shrink-0" />
                   {settings.address}
                 </li>
@@ -176,8 +186,8 @@ export default function Footer({ settings }: FooterProps) {
         </div>
 
         {/* ─── Bottom bar ─────────────────────────────────────────── */}
-        <div className="mt-12 pt-6 border-t border-[#E5E1DA] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <p className="text-[11px] text-[#C9C4BC] tracking-wide">
+        <div className="mt-12 pt-6 border-t border-[#2E2E2E] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <p className="text-[11px] text-[#8A8681] tracking-wide">
             © {currentYear} {BRAND.name}. Seluruh hak cipta dilindungi.
           </p>
           {/* A "Pembelian diproses melalui Shopee" note used to sit here. It was

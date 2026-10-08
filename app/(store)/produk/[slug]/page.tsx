@@ -214,7 +214,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
             color={product.color}
             dimensions={product.dimensions}
             weightGrams={product.weightGrams}
-            craftingTime={product.craftingTime}
           />
 
           {/* Purchase actions */}
