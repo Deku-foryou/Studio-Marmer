@@ -28,13 +28,16 @@ if (typeof window !== 'undefined') {
   );
 }
 
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import type {
   CatalogCategory,
+  CatalogPage,
   CatalogProduct,
   PricingType,
   ProductDetail,
   ProductSpecification,
+  SortOption,
   StockStatus,
 } from '@/types/product';
 
@@ -235,6 +238,157 @@ function toProductDetail(row: ProductRow): ProductDetail {
       ? row.images.map((image) => image.imageUrl)
       : ['/placeholders/marble-carrara.png'],
   };
+}
+
+// ─── Paginated catalog query ───────────────────────────────────────────────────
+
+/** Everything the catalog page needs to know about what the visitor asked for. */
+export interface CatalogQueryInput {
+  /** 1-based; clamped against the real result count before querying. */
+  readonly page: number;
+  readonly pageSize: number;
+  readonly search: string;
+  readonly categories: readonly string[];
+  readonly inStockOnly: boolean;
+  readonly sort: SortOption;
+}
+
+/**
+ * Translates a URL request into a Prisma `where`.
+ *
+ * Mirrors the filtering that used to run in the browser (see
+ * `hooks/useFilteredProducts.ts`, since removed): category slugs OR together,
+ * free text matches name / stone / material / category, and "in stock only"
+ * keeps only purchasable pieces.
+ */
+function buildCatalogWhere(input: CatalogQueryInput): Prisma.ProductWhereInput {
+  const conditions: Prisma.ProductWhereInput[] = [
+    // The storefront never lists a sold-out piece - unchanged from getProducts().
+    { isAvailable: true },
+  ];
+
+  if (input.categories.length > 0) {
+    conditions.push({
+      category: { slug: { in: [...input.categories] } },
+    });
+  }
+
+  // `stockStatus` is derived from `isAvailable` in toCatalogProduct(), so
+  // "tersedia saja" is the same predicate the old client-side filter applied.
+  if (input.inStockOnly) {
+    conditions.push({ isAvailable: true });
+  }
+
+  const search = input.search.trim();
+  if (search) {
+    // MySQL's default collation is case-insensitive, so `contains` reproduces
+    // the old `toLowerCase().includes()` behaviour without a function index.
+    conditions.push({
+      OR: [
+        { name: { contains: search } },
+        { stoneType: { contains: search } },
+        { material: { contains: search } },
+        { category: { name: { contains: search } } },
+      ],
+    });
+  }
+
+  return { AND: conditions };
+}
+
+/**
+ * Sort order for the catalog grid.
+ *
+ * `featured` keeps the storefront's editorial order (flagged first, then
+ * newest); `trending` sorted by the same flag client-side. Every branch ends
+ * with `id` so paging is stable - without a total tiebreaker, two products at
+ * the same price can swap between pages and the visitor sees one twice.
+ */
+function buildCatalogOrderBy(
+  sort: SortOption
+): Prisma.ProductOrderByWithRelationInput[] {
+  switch (sort) {
+    case 'price-asc':
+      return [{ price: 'asc' }, { id: 'asc' }];
+    case 'price-desc':
+      return [{ price: 'desc' }, { id: 'asc' }];
+    case 'trending':
+    case 'featured':
+    default:
+      return [{ isFeatured: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }];
+  }
+}
+
+/**
+ * One page of the catalog, filtered and sorted in the database.
+ *
+ * This is the replacement for fetching the whole catalog and slicing it in the
+ * browser: `count` establishes how many products matched, the requested page is
+ * clamped into range, and only that slice is fetched with `skip`/`take`.
+ *
+ * The count runs first because the clamp needs it - a request for `?page=99` on
+ * a 2-page result set returns the last page rather than an empty grid.
+ */
+export async function getCatalogProducts(
+  input: CatalogQueryInput
+): Promise<CatalogPage> {
+  const pageSize = Math.max(1, Math.floor(input.pageSize));
+  const requestedPage = Math.floor(input.page);
+  const where = buildCatalogWhere(input);
+  const orderBy = buildCatalogOrderBy(input.sort);
+
+  const total = await prisma.product.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(
+    Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1),
+    totalPages
+  );
+
+  const rows = (await prisma.product.findMany({
+    where,
+    orderBy,
+    skip: (currentPage - 1) * pageSize,
+    take: pageSize,
+    select: PRODUCT_SELECT,
+  })) as ProductRow[];
+
+  return {
+    products: rows.map(toCatalogProduct),
+    total,
+    totalPages,
+    currentPage,
+    pageSize,
+  };
+}
+
+/**
+ * Available products per category slug, for the homepage category strip.
+ *
+ * An aggregate rather than a full catalog read, so the strip keeps showing
+ * whole-catalogue counts while the grid itself only ever loads 8 rows.
+ */
+export async function getProductCountsByCategory(): Promise<Record<string, number>> {
+  const grouped = await prisma.product.groupBy({
+    by: ['categoryId'],
+    where: { isAvailable: true },
+    _count: { _all: true },
+  });
+
+  if (grouped.length === 0) return {};
+
+  const categories = await prisma.category.findMany({
+    select: { id: true, slug: true },
+  });
+  const slugById = new Map(
+    categories.map((category) => [String(category.id), category.slug])
+  );
+
+  const counts: Record<string, number> = {};
+  for (const row of grouped) {
+    const slug = slugById.get(String(row.categoryId));
+    if (slug) counts[slug] = row._count._all;
+  }
+  return counts;
 }
 
 // ─── Public queries ───────────────────────────────────────────────────────────

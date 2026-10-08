@@ -1,38 +1,52 @@
 'use client';
 
-import { useFilter } from '../../context/FilterContext';
-import { useFilteredProducts } from '../../hooks/useFilteredProducts';
 import ProductCard from './ProductCard';
+import Pagination from './Pagination';
 import FilterBar from '../filters/FilterBar';
 import { PackageSearch } from 'lucide-react';
-import type { CatalogCategory, CatalogProduct } from '../../types/product';
+import type {
+  CatalogCategory,
+  CatalogPage,
+  CatalogProduct,
+} from '../../types/product';
 
 interface ProductGridProps {
-  /** Products loaded on the server from MySQL via the data access layer. */
+  /**
+   * The current page of products, already filtered, sorted and sliced by the
+   * server. This component must not re-filter or re-slice them: the DAL is what
+   * decided which rows belong on this page.
+   */
   products: CatalogProduct[];
   /** Categories loaded on the server. */
   categories: CatalogCategory[];
+  /** Counts and page geometry for the result set the grid is showing. */
+  pagination: CatalogPage;
 }
 
 /**
- * Client component that owns interactive catalog state (quick-view target and
- * filter-driven sorting). The product rows themselves arrive as serialized
- * props from a Server Component - this component performs no database access
- * and must never import Prisma.
+ * Client component that renders one page of the catalog.
+ *
+ * All product data arrives as serialized props from a Server Component - this
+ * component performs no database access, and must never import Prisma. Filtering
+ * and paging are server-side, so the only state it owns is what FilterBar and
+ * Pagination need to drive navigation.
  */
-export default function ProductGrid({ products, categories }: ProductGridProps) {
-  const { filters } = useFilter();
-  const filtered = useFilteredProducts(products, filters);
+export default function ProductGrid({
+  products,
+  categories,
+  pagination,
+}: ProductGridProps) {
+  const { total, currentPage, totalPages } = pagination;
 
   return (
     <section aria-label="Product catalog">
       {/* ─── Filters ──────────────────────────────────────── */}
       <div className="mb-8">
-        <FilterBar resultCount={filtered.length} categories={categories} />
+        <FilterBar pagination={pagination} categories={categories} />
       </div>
 
       {/* ─── Grid ─────────────────────────────────────────── */}
-      {filtered.length === 0 ? (
+      {products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 gap-6">
           <div className="w-20 h-20 border border-[#E5E1DA] bg-white rounded-none flex items-center justify-center">
             <PackageSearch size={32} className="text-[#999999]" />
@@ -47,25 +61,34 @@ export default function ProductGrid({ products, categories }: ProductGridProps) 
           </div>
         </div>
       ) : (
-        <div
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-          role="list"
-          aria-label="Products"
-        >
-          {filtered.map((product, index) => (
-            <div
-              key={product.id}
-              role="listitem"
-              className="animate-fade-up h-full flex flex-col"
-              style={{
-                animationDelay: `${Math.min(index * 50, 400)}ms`,
-                animationFillMode: 'both',
-              }}
-            >
-              <ProductCard product={product} />
-            </div>
-          ))}
-        </div>
+        <>
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            role="list"
+            aria-label="Products"
+          >
+            {products.map((product, index) => (
+              <div
+                key={product.id}
+                role="listitem"
+                className="animate-fade-up h-full flex flex-col"
+                style={{
+                  animationDelay: `${Math.min(index * 50, 400)}ms`,
+                  animationFillMode: 'both',
+                }}
+              >
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+
+          {/* ─── Pagination ────────────────────────────────── */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            total={total}
+          />
+        </>
       )}
     </section>
   );

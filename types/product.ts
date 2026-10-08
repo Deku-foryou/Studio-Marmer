@@ -63,6 +63,24 @@ export interface CatalogCategory {
   isActive: boolean;
 }
 
+/**
+ * One page of catalog results, as produced by the paginated data access query.
+ *
+ * `total` is the number of products matching the *current filters*, not the size
+ * of the table, so the UI can report both "how many matched" and "how many am I
+ * looking at". `currentPage` is already clamped to `[1, totalPages]` by the DAL,
+ * so the UI never has to defend against a hand-edited `?page=9999`.
+ */
+export interface CatalogPage {
+  products: CatalogProduct[];
+  /** Products matching the active filters, across all pages. */
+  total: number;
+  /** At least 1 - an empty result set is still "page 1 of 1". */
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
 /** Extra marble detail rendered on the product detail page (server-side). */
 export interface ProductDetail extends CatalogProduct {
   material: string | null;

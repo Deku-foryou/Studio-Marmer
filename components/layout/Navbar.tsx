@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useFilter } from '@/context/FilterContext';
+import NavbarSearch, { NavbarSearchSkeleton } from './NavbarSearch';
 import { Search, X, Menu, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BRAND, NAV_LINKS } from '@/lib/brand';
@@ -14,34 +14,9 @@ interface NavbarProps {
 }
 
 export default function Navbar({ settings }: NavbarProps) {
-  const { filters, setSearchQuery } = useFilter();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [localSearch, setLocalSearch] = useState('');
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  // Debounce search so typing does not re-filter the catalog on every keystroke.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearchQuery(localSearch);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [localSearch, setSearchQuery]);
-
-  // Keep the input in sync when the query is cleared elsewhere (for example by
-  // the "Hapus Filter" button in FilterBar).
-  //
-  // This uses React's documented "adjusting state when a prop changes" pattern:
-  // the comparison and both setState calls run during render, so React
-  // re-renders immediately without ever committing an intermediate frame that
-  // shows a stale value. Doing the same inside an effect causes a cascading
-  // render, which is precisely what `react-hooks/set-state-in-effect` reports.
-  const [lastSyncedQuery, setLastSyncedQuery] = useState(filters.searchQuery);
-
-  if (filters.searchQuery !== lastSyncedQuery) {
-    setLastSyncedQuery(filters.searchQuery);
-    setLocalSearch(filters.searchQuery);
-  }
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -109,32 +84,13 @@ export default function Navbar({ settings }: NavbarProps) {
           </nav>
 
           {/* ─── Search (Desktop) ─────────────────────────────────── */}
+          {/* useSearchParams needs a Suspense boundary during prerender, so the
+              interactive box is scoped to its own boundary instead of blanking
+              the whole header. */}
           <div className="hidden lg:block flex-1 max-w-xs">
-            <div className="relative">
-              <Search
-                size={15}
-                strokeWidth={1.5}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999999] pointer-events-none"
-              />
-              <input
-                id="navbar-search"
-                type="search"
-                placeholder="Cari produk…"
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                className="w-full input-warm rounded-sm pl-10 pr-9 py-2.5 text-[13px] tracking-wide"
-                aria-label="Cari produk"
-              />
-              {localSearch && (
-                <button
-                  onClick={() => setLocalSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] hover:text-[#1A1A1A] transition-colors"
-                  aria-label="Hapus pencarian"
-                >
-                  <X size={13} strokeWidth={1.5} />
-                </button>
-              )}
-            </div>
+            <Suspense fallback={<NavbarSearchSkeleton variant="desktop" />}>
+              <NavbarSearch variant="desktop" />
+            </Suspense>
           </div>
 
           {/* ─── Actions ──────────────────────────────────────────── */}
@@ -181,22 +137,9 @@ export default function Navbar({ settings }: NavbarProps) {
         {/* ─── Mobile search ─────────────────────────────────────── */}
         {isMobileSearchOpen && (
           <div className="lg:hidden mt-4 pb-1 animate-fade-down">
-            <div className="relative">
-              <Search
-                size={15}
-                strokeWidth={1.5}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#999999] pointer-events-none"
-              />
-              <input
-                type="search"
-                placeholder="Cari produk…"
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                className="w-full input-warm rounded-sm pl-10 pr-4 py-2.5 text-[13px] tracking-wide"
-                autoFocus
-                aria-label="Cari produk"
-              />
-            </div>
+            <Suspense fallback={<NavbarSearchSkeleton variant="mobile" />}>
+              <NavbarSearch variant="mobile" />
+            </Suspense>
           </div>
         )}
       </div>

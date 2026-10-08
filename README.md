@@ -148,18 +148,17 @@ studio-marmer/
 │   └── globals.css          # Design tokens, keyframes, component classes
 ├── components/
 │   ├── layout/              # Navbar, Hero, Footer
-│   ├── product/             # ProductCard, ProductGrid, gallery, accordion, purchase actions
+│   ├── product/             # ProductCard, ProductGrid, Pagination, gallery, accordion, purchase actions
 │   ├── sections/            # Homepage section components
 │   ├── filters/             # FilterBar
 │   └── ui/                  # Badge, Button (primitives)
 ├── context/
-│   └── FilterContext.tsx    # Client-side search / filter / sort state
-├── hooks/
-│   └── useFilteredProducts.ts
+│   └── FilterContext.tsx    # URL-backed search / filter / sort state
 ├── lib/
 │   ├── brand.ts             # Brand name and navigation links
 │   ├── site-url.ts          # Canonical public origin (NEXT_PUBLIC_SITE_URL)
 │   ├── utils.ts             # cn, formatPrice, WhatsApp link helpers
+│   ├── catalog-query.ts     # Catalog search-param contract, PRODUCTS_PER_PAGE = 8
 │   ├── data/                # SERVER-ONLY data access layer
 │   │   ├── products.ts      # getProducts, getProductBySlug, getFeaturedProducts, getCategories
 │   │   └── site.ts          # getSiteSettings

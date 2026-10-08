@@ -3,12 +3,15 @@ import CategoriesSection from '@/components/sections/CategoriesSection';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
 import ProductCard from '@/components/product/ProductCard';
 import ProductGrid from '@/components/product/ProductGrid';
+import { FilterProvider } from '@/context/FilterContext';
 import {
-  getProducts,
   getFeaturedProducts,
   getCategories,
+  getCatalogProducts,
+  getProductCountsByCategory,
 } from '@/lib/data/products';
 import { getSiteSettings } from '@/lib/data/site';
+import { PRODUCTS_PER_PAGE, parseCatalogQuery } from '@/lib/catalog-query';
 
 /**
  * Homepage — Server Component.
@@ -18,20 +21,35 @@ import { getSiteSettings } from '@/lib/data/site';
  *
  * All Prisma reads and Decimal -> number serialization happen on the server;
  * the client only receives plain JSON-safe props.
+ *
+ * CATALOG PAGINATION
+ * The catalog reads `searchParams` (filter / sort / search / page) and asks the
+ * data access layer for exactly one page of 8 products. Reading searchParams
+ * makes this route dynamic - which is the point: the result set has to be
+ * queried per request for `?page=2` to mean anything.
  */
-export default async function HomePage() {
-  const [settings, products, categories, featured] = await Promise.all([
+interface HomePageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  const params = await searchParams;
+  const query = parseCatalogQuery(params);
+
+  const [settings, categories, featured, counts, catalog] = await Promise.all([
     getSiteSettings(),
-    getProducts(),
     getCategories(),
     getFeaturedProducts(),
+    getProductCountsByCategory(),
+    getCatalogProducts({
+      page: query.page,
+      pageSize: PRODUCTS_PER_PAGE,
+      search: query.search,
+      categories: query.categories,
+      inStockOnly: query.inStockOnly,
+      sort: query.sort,
+    }),
   ]);
-
-  // Product counts per category slug, used by the category strip.
-  const counts = products.reduce<Record<string, number>>((acc, product) => {
-    acc[product.categorySlug] = (acc[product.categorySlug] ?? 0) + 1;
-    return acc;
-  }, {});
 
   return (
     <>
@@ -194,24 +212,30 @@ export default async function HomePage() {
       </section>
 
       {/* ─── Catalog ─────────────────────────────────────────────── */}
-      <div id="katalog" className="scroll-mt-24">
-        <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
-          <div className="mb-8 sm:mb-10 border-b border-[#E5E1DA] pb-8">
-            <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-2">
-              Katalog
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight mb-2">
-              Semua Produk
-            </h2>
-            <p className="text-[#666666] text-sm max-w-md font-light">
-              Telusuri seluruh karya yang tersedia. Gunakan pencarian dan filter
-              untuk mempersempit pilihan.
-            </p>
-          </div>
+      <FilterProvider>
+        <div id="katalog" className="scroll-mt-24">
+          <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
+            <div className="mb-8 sm:mb-10 border-b border-[#E5E1DA] pb-8">
+              <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-2">
+                Katalog
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight mb-2">
+                Semua Produk
+              </h2>
+              <p className="text-[#666666] text-sm max-w-md font-light">
+                Telusuri seluruh karya yang tersedia. Gunakan pencarian dan filter
+                untuk mempersempit pilihan.
+              </p>
+            </div>
 
-          <ProductGrid products={products} categories={categories} />
-        </section>
-      </div>
+            <ProductGrid
+              products={catalog.products}
+              categories={categories}
+              pagination={catalog}
+            />
+          </section>
+        </div>
+      </FilterProvider>
 
       <WhatsAppCta settings={settings} />
     </>

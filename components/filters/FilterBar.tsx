@@ -2,7 +2,7 @@
 
 import { useFilter } from '@/context/FilterContext';
 import type { SortOption } from '@/types/product';
-import type { CatalogCategory } from '@/types/product';
+import type { CatalogCategory, CatalogPage } from '@/types/product';
 import { SlidersHorizontal, CheckSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,14 +28,22 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 interface FilterBarProps {
-  resultCount: number;
+  /**
+   * Page geometry for the current result set, supplied by the server.
+   * `total` counts everything matching the filters, not just this page.
+   */
+  pagination: CatalogPage;
   /** Active categories, supplied by the server from the database. */
   categories: CatalogCategory[];
 }
 
-export default function FilterBar({ resultCount, categories }: FilterBarProps) {
+export default function FilterBar({ pagination, categories }: FilterBarProps) {
   const { filters, toggleCategory, setSort, toggleInStock, clearFilters } =
     useFilter();
+
+  const { total, currentPage, totalPages, pageSize } = pagination;
+  const firstShown = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const lastShown = Math.min(currentPage * pageSize, total);
 
   const hasActiveFilters =
     filters.selectedCategories.length > 0 ||
@@ -130,11 +138,18 @@ export default function FilterBar({ resultCount, categories }: FilterBarProps) {
           )}
         </div>
 
-        {/* Result Count */}
+        {/* Result Count — reflects the filtered result set and the slice of it
+            currently on screen, so page 2 of 9 products reads "1–1 dari 9". */}
         <p className="text-xs uppercase tracking-wider text-[#999999]">
           Menampilkan{' '}
-          <span className="text-[#1A1A1A] font-semibold">{resultCount}</span>{' '}
-          produk
+          <span className="text-[#1A1A1A] font-semibold">
+            {firstShown}–{lastShown}
+          </span>{' '}
+          dari{' '}
+          <span className="text-[#1A1A1A] font-semibold">{total}</span> produk
+          {totalPages > 1 && (
+            <span className="text-[#C9C4BC]"> · halaman {currentPage}</span>
+          )}
         </p>
       </div>
     </div>
