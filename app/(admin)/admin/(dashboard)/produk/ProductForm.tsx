@@ -6,6 +6,7 @@ import { useFormStatus } from 'react-dom';
 import { Plus, Trash2, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 import type { AdminCategoryRow, AdminProductDetail } from '@/lib/data/admin/products';
+import ProductImageUploader from './ProductImageUploader';
 import {
   IDLE_STATE,
   createProduct,
@@ -30,7 +31,6 @@ interface ProductFormProps {
 }
 
 type SpecRow = { label: string; value: string };
-type ImageRow = { imageUrl: string; altText: string };
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -88,15 +88,6 @@ export function ProductForm({ categories, product }: ProductFormProps) {
     product && product.specifications.length > 0
       ? product.specifications
       : [{ label: '', value: '' }]
-  );
-
-  const [images, setImages] = useState<ImageRow[]>(
-    product && product.images.length > 0
-      ? product.images.map((image) => ({
-          imageUrl: image.imageUrl,
-          altText: image.altText ?? '',
-        }))
-      : [{ imageUrl: '', altText: '' }]
   );
 
   const fieldErrors = state.fieldErrors ?? {};
@@ -501,85 +492,20 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         <FieldError message={fieldErrors.specifications} />
       </section>
 
-      {/* ─── Photos (URL only, Phase 6B) ───────────────────────── */}
-      <section className="border border-[#E5E1DA] bg-white p-5 sm:p-6">
-        <SectionHeading>Foto Produk *</SectionHeading>
-
-        <p className="text-[10px] text-[#999999] font-light leading-relaxed mb-4">
-          Untuk sementara masukkan URL foto: tautan http(s) atau path lokal yang
-          diawali &ldquo;/&rdquo;. Unggah berkas akan tersedia pada tahap
-          berikutnya.
-        </p>
-
-        <div className="space-y-3">
-          {images.map((row, index) => (
-            <div key={index} className="border border-[#E5E1DA] p-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                <div>
-                  <label
-                    htmlFor={`image_${index}_url`}
-                    className="block text-[9px] uppercase tracking-[0.14em] text-[#999999] font-medium mb-1"
-                  >
-                    URL Foto {index + 1} *
-                  </label>
-                  <input
-                    id={`image_${index}_url`}
-                    type="text"
-                    name={`image_${index}_url`}
-                    required
-                    defaultValue={row.imageUrl}
-                    placeholder="/placeholders/marble-carrara.png"
-                    className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor={`image_${index}_alt`}
-                    className="block text-[9px] uppercase tracking-[0.14em] text-[#999999] font-medium mb-1"
-                  >
-                    Teks Alternatif
-                  </label>
-                  <input
-                    id={`image_${index}_alt`}
-                    type="text"
-                    name={`image_${index}_alt`}
-                    defaultValue={row.altText}
-                    placeholder="Deskripsi singkat foto"
-                    className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setImages((prev) =>
-                    prev.length === 1
-                      ? [{ imageUrl: '', altText: '' }]
-                      : prev.filter((_, i) => i !== index)
-                  )
-                }
-                className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-[#999999] hover:text-[#C4553D] transition-colors"
-              >
-                <Trash2 size={11} strokeWidth={1.5} aria-hidden="true" />
-                Hapus Foto
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() =>
-            setImages((prev) => [...prev, { imageUrl: '', altText: '' }])
-          }
-          className="mt-3 inline-flex items-center gap-1.5 border border-[#E5E1DA] px-3.5 py-2 text-[10px] uppercase tracking-[0.14em] text-[#1A1A1A] hover:bg-[#FBF9F6] transition-colors"
-        >
-          <Plus size={12} strokeWidth={1.5} aria-hidden="true" />
-          Tambah Foto
-        </button>
-        <FieldError message={fieldErrors.images} />
-      </section>
+      {/* ─── Photos (Cloudinary upload, Phase 6C-1) ─────────────── */}
+      {/* Owns its own upload + ordering state and writes the results into
+          hidden fields, so this form no longer tracks image rows itself. */}
+      <ProductImageUploader
+        initialImages={
+          product?.images.map((image) => ({
+            imageUrl: image.imageUrl,
+            altText: image.altText ?? '',
+            publicId: image.publicId ?? '',
+            fileName: '',
+          })) ?? []
+        }
+        fieldError={fieldErrors.images}
+      />
 
       {/* ─── Business flags ────────────────────────────────────── */}
       <section className="border border-[#E5E1DA] bg-white p-5 sm:p-6">

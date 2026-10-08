@@ -35,9 +35,15 @@ const optionalPositiveNumber = (message: string) =>
   );
 
 /**
- * An image reference. Phase 6B-1 manages image *URLs* only - binary upload
- * arrives in Phase 6C. Both absolute http(s) URLs and site-relative paths
- * (`/placeholders/...`) are accepted, matching how products are seeded today.
+ * An image reference.
+ *
+ * Since Phase 6C-1 photos are uploaded from the browser to Cloudinary and this
+ * field receives the resulting `secure_url`. Site-relative paths stay valid so
+ * an image hosted elsewhere (or a local asset) can still be referenced.
+ *
+ * The value is still validated here even though the browser produced it: every
+ * field of this form is attacker-controlled, so the server never stores a URL it
+ * has not inspected.
  */
 const imageUrlSchema = z
   .string()
@@ -53,9 +59,30 @@ const imageUrlSchema = z
     }
   }, 'URL foto tidak valid. Gunakan tautan http(s) atau path yang diawali /.');
 
+/**
+ * Cloudinary public id. Optional, but when present it must look like a public id
+ * rather than an arbitrary blob: a single relative path segment, no scheme, no
+ * whitespace, bounded length. This keeps a hostile value from reaching the
+ * database as a nonsensical identifier.
+ */
+const imagePublicIdSchema = z
+  .string()
+  .trim()
+  .max(255, 'Public ID foto terlalu panjang.')
+  .refine(
+    (value) => value.length > 0 && /^[A-Za-z0-9][A-Za-z0-9/_-]*$/.test(value),
+    'Public ID foto tidak valid.'
+  );
+
 export const productImageInputSchema = z.object({
   imageUrl: imageUrlSchema,
   altText: optionalText(255),
+  /** Absent for images not hosted on Cloudinary. */
+  publicId: z.preprocess(
+    (value) =>
+      typeof value === 'string' && value.trim() === '' ? undefined : value,
+    imagePublicIdSchema.optional()
+  ),
 });
 
 /** A single Label | Value specification row. */

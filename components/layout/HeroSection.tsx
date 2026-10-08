@@ -62,7 +62,7 @@ export default function HeroSection({ settings }: HeroSectionProps) {
             <h1 className="text-[clamp(2rem,5.5vw,4.2rem)] font-light leading-[1.12] tracking-tight text-[#1A1A1A] mb-6 animate-fade-up">
               {headline ?? (
                 <>
-                  Keindahan Marmer,
+                  Keindahan Marmer
                   <br />
                   <span className="font-medium">Dibentuk untuk Setiap Ruang.</span>
                 </>

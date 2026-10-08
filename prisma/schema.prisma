@@ -110,6 +110,10 @@ model ProductImage {
   imageUrl  String   @db.VarChar(500)
   altText   String?  @db.VarChar(255)
   sortOrder Int      @default(0)
+  /// Cloudinary asset identifier. Stored so the remote asset can be replaced or
+  /// deleted later without guessing from the delivery URL. Nullable because an
+  /// image may predate Cloudinary hosting (or be hosted elsewhere entirely).
+  publicId  String?  @db.VarChar(255)
   createdAt DateTime @default(now())
 
   @@index([productId, sortOrder])

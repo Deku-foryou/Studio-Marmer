@@ -91,12 +91,26 @@ function readFormData(formData: FormData) {
     if (i > 24) break;
   }
 
-  const images: { imageUrl: string; altText: string }[] = [];
+  /**
+   * Images arrive as indexed hidden inputs written by the uploader component,
+   * one triple per slot in display order:
+   *   image_0_url, image_0_publicId, image_0_alt, image_1_url, ...
+   *
+   * The public id is optional: a slot that predates Cloudinary hosting, or an
+   * image hosted elsewhere, simply omits it. A row with no URL at all is dropped
+   * below, which is what makes "save with zero photos" work.
+   */
+  const images: {
+    imageUrl: string;
+    altText: string;
+    publicId: string;
+  }[] = [];
   for (let i = 0; ; i += 1) {
     const imageUrl = getString(`image_${i}_url`);
     const altText = getString(`image_${i}_alt`);
-    if (!imageUrl && !altText && i > 24) break;
-    images.push({ imageUrl, altText });
+    const publicId = getString(`image_${i}_publicId`);
+    if (!imageUrl && !altText && !publicId && i > 24) break;
+    images.push({ imageUrl, altText, publicId });
     if (i > 24) break;
   }
 
@@ -192,6 +206,9 @@ export async function createProduct(
           create: input.images.map((image, index) => ({
             imageUrl: image.imageUrl,
             altText: image.altText ?? null,
+            publicId: image.publicId ?? null,
+            // Position in the submitted list becomes the display order, so the
+            // first photo the admin chose is the gallery's cover.
             sortOrder: index,
           })),
         },
@@ -299,18 +316,89 @@ export async function updateProduct(
         },
       });
 
-      // Replace the gallery wholesale so reorder and removal take effect
-      // immediately. Rows are deleted explicitly rather than relying only on
-      // the cascade, which keeps intent obvious.
-      await tx.productImage.deleteMany({ where: { productId } });
-      await tx.productImage.createMany({
-        data: input.images.map((image, index) => ({
-          productId,
+      // ─── Gallery sync ───────────────────────────────────────────────────────────
+      //
+      // The submitted list is the source of truth for the gallery: reorder,
+      // removal and addition all take effect by making the stored rows match it.
+      //
+      // Each surviving image is matched on `publicId` when it has one, so an
+      // existing row is updated in place and keeps its identity. A Cloudinary
+      // asset that is dropped from the list loses only its database row here -
+      // the remote asset is deliberately left alone for Phase 6C-2 to clean up.
+      //
+      // Rows with no public id (hosted elsewhere) cannot be matched reliably, so
+      // they are keyed on their URL instead.
+      const keep = input.images;
+
+      const existing = await tx.productImage.findMany({
+        where: { productId },
+        select: { id: true, imageUrl: true, publicId: true },
+      });
+
+      // publicId first, URL as the fallback key: two photos of the same product
+      // can legitimately share a URL only if the admin duplicated a row, in
+      // which case the first match wins and the rest are simply not reused.
+      const matchByPublicId = new Map<string, number>();
+      const matchByUrl = new Map<string, number>();
+      for (const row of existing) {
+        if (row.publicId && !matchByPublicId.has(row.publicId)) {
+          matchByPublicId.set(row.publicId, row.id);
+        }
+        if (!matchByUrl.has(row.imageUrl)) {
+          matchByUrl.set(row.imageUrl, row.id);
+        }
+      }
+
+      const reusedIds = new Set<number>();
+      const operations: Prisma.PrismaPromise<unknown>[] = [];
+
+      for (const [index, image] of keep.entries()) {
+        const matchedId = image.publicId
+          ? matchByPublicId.get(image.publicId)
+          : undefined;
+        const fallbackId = matchByUrl.get(image.imageUrl);
+        const rowId =
+          matchedId !== undefined && !reusedIds.has(matchedId)
+            ? matchedId
+            : fallbackId !== undefined && !reusedIds.has(fallbackId)
+              ? fallbackId
+              : undefined;
+
+        const data = {
           imageUrl: image.imageUrl,
           altText: image.altText ?? null,
+          // Filled in only when Cloudinary gave us one; an existing row keeps
+          // whatever it already had rather than being blanked.
+          ...(image.publicId ? { publicId: image.publicId } : {}),
           sortOrder: index,
-        })),
-      });
+        };
+
+        if (rowId !== undefined) {
+          reusedIds.add(rowId);
+          operations.push(
+            tx.productImage.update({ where: { id: rowId }, data })
+          );
+        } else {
+          operations.push(
+            tx.productImage.create({ data: { ...data, productId } })
+          );
+        }
+      }
+
+      // Only rows the admin actually removed are deleted. Comparing against the
+      // set of reused ids is what stops a submit that merely re-saves the form
+      // from wiping the gallery.
+      const removedIds = existing
+        .map((row) => row.id)
+        .filter((id) => !reusedIds.has(id));
+
+      if (removedIds.length > 0) {
+        operations.push(
+          tx.productImage.deleteMany({ where: { id: { in: removedIds } } })
+        );
+      }
+
+      await Promise.all(operations);
     });
 
     revalidatePath('/admin/produk');

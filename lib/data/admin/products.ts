@@ -92,7 +92,18 @@ export type AdminProductDetail = Omit<
   AdminProductRow,
   'imageUrl' | 'imageCount' | 'createdAt' | 'updatedAt'
 > & {
-  images: { imageUrl: string; altText: string | null }[];
+  /**
+   * Gallery rows in display order.
+   *
+   * `publicId` is the Cloudinary asset id, or null for an image that is not
+   * hosted there. The form re-submits it so an existing row can be updated in
+   * place instead of being deleted and recreated.
+   */
+  images: {
+    imageUrl: string;
+    altText: string | null;
+    publicId: string | null;
+  }[];
 };
 
 export type AdminCategoryRow = {
@@ -137,7 +148,7 @@ const PRODUCT_SELECT = {
   updatedAt: true,
   category: { select: { name: true } },
   images: {
-    select: { imageUrl: true, altText: true, sortOrder: true },
+    select: { imageUrl: true, altText: true, publicId: true, sortOrder: true },
     orderBy: { sortOrder: 'asc' },
   },
 } as const;
@@ -167,7 +178,12 @@ type ProductRecord = {
   createdAt: Date;
   updatedAt: Date;
   category: { name: string };
-  images: { imageUrl: string; altText: string | null; sortOrder: number }[];
+  images: {
+    imageUrl: string;
+    altText: string | null;
+    publicId: string | null;
+    sortOrder: number;
+  }[];
 };
 
 function toAdminProductRow(record: ProductRecord): AdminProductRow {
@@ -286,6 +302,7 @@ function toAdminProductDetail(record: ProductRecord): AdminProductDetail {
     images: record.images.map((image) => ({
       imageUrl: image.imageUrl,
       altText: image.altText,
+      publicId: image.publicId,
     })),
   };
 }
