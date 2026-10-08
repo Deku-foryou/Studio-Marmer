@@ -100,19 +100,6 @@ export default function Footer({ settings }: FooterProps) {
               Pembelian
             </h2>
             <ul className="space-y-3">
-              {settings.shopeeUrl && (
-                <li>
-                  <a
-                    href={settings.shopeeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
-                  >
-                    <ShoppingBag size={13} strokeWidth={1.5} />
-                    Shopee
-                  </a>
-                </li>
-              )}
               {whatsappHref && (
                 <li>
                   <a
@@ -123,6 +110,19 @@ export default function Footer({ settings }: FooterProps) {
                   >
                     <MessageCircle size={13} strokeWidth={1.5} />
                     WhatsApp
+                  </a>
+                </li>
+              )}
+              {settings.shopeeUrl && (
+                <li>
+                  <a
+                    href={settings.shopeeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[12px] text-[#666666] hover:text-[#1A1A1A] transition-colors duration-300"
+                  >
+                    <ShoppingBag size={13} strokeWidth={1.5} />
+                    Shopee
                   </a>
                 </li>
               )}

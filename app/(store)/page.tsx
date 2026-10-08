@@ -1,6 +1,5 @@
 import HeroSection from '@/components/layout/HeroSection';
 import CategoriesSection from '@/components/sections/CategoriesSection';
-import GallerySection from '@/components/sections/GallerySection';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
 import ProductCard from '@/components/product/ProductCard';
 import ProductGrid from '@/components/product/ProductGrid';
@@ -213,11 +212,6 @@ export default async function HomePage() {
           <ProductGrid products={products} categories={categories} />
         </section>
       </div>
-
-      <GallerySection
-        products={products}
-        whatsappNumber={settings.whatsappNumber}
-      />
 
       <WhatsAppCta settings={settings} />
     </>
