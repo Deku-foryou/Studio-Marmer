@@ -69,15 +69,6 @@ export default function ProductImageUploader({
 
   const isUploading = pending.length > 0;
 
-  const updateAt = useCallback(
-    (index: number, patch: Partial<ProductImageDraft>) => {
-      setImages((prev) =>
-        prev.map((image, i) => (i === index ? { ...image, ...patch } : image))
-      );
-    },
-    []
-  );
-
   const move = useCallback((index: number, direction: -1 | 1) => {
     setImages((prev) => {
       const target = index + direction;

@@ -25,7 +25,7 @@ const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
 /** Formats accepted by the Cloudinary preset. */
-export export const ACCEPTED_IMAGE_TYPES = [
+export const ACCEPTED_IMAGE_TYPES = [
   'image/jpeg',
   'image/png',
   'image/webp',
