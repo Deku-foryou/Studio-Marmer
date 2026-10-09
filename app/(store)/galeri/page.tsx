@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import Image from 'next/image';
 import { BRAND } from '@/lib/brand';
-import { getProducts } from '@/lib/data/products';
+import { getGalleryPhotos } from '@/lib/data/gallery';
 import { getSiteSettings } from '@/lib/data/site';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
 
@@ -16,14 +15,20 @@ export const metadata: Metadata = {
 /**
  * Gallery page — Server Component.
  *
- * Reads real products from the database. Until the client's catalog is
- * published this page shows an empty state; no sample content is substituted.
- * Products and their images arrive through the admin area, so publishing the
- * gallery needs no change here.
+ * Reads the photographs admins publish from the `gallery_images` table through
+ * lib/data/gallery.ts. There is no hardcoded image array and no product fallback:
+ * what appears here is exactly what an admin chose to publish, ordered by
+ * `sortOrder`. A gallery that has not been filled in yet renders an empty state,
+ * because substituting sample content would show the visitor work that was never
+ * published.
+ *
+ * Only `isActive` rows reach this page (the filter lives in the DAL, so it cannot
+ * be forgotten at a call site), and the ordering ends on `id` so two photos left at
+ * the same sortOrder keep a stable sequence between renders.
  */
 export default async function GalleryPage() {
-  const [products, settings] = await Promise.all([
-    getProducts(),
+  const [photos, settings] = await Promise.all([
+    getGalleryPhotos(),
     getSiteSettings(),
   ]);
 
@@ -37,45 +42,55 @@ export default async function GalleryPage() {
           Bentuk, tekstur, dan warna.
         </h1>
         <p className="text-sm text-[#666666] leading-relaxed font-light max-w-xl">
-          Foto di halaman ini masih berupa placeholder selama foto produk asli
-          belum tersedia. Struktur galeri sudah siap dan otomatis mengikuti data
-          produk.
+          Potongan marmer yang dipahat satu per satu. Karena berasal dari alam,
+          setiap karya punya urat dan warna yang tidak pernah sama.
         </p>
       </section>
 
-      {products.length === 0 ? (
+      {photos.length === 0 ? (
         <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pb-24">
-          <p className="text-sm text-[#666666] font-light">
-            Belum ada produk untuk ditampilkan.
-          </p>
+          <div className="border border-[#E5E1DA] bg-white py-16 px-6 text-center">
+            <p className="text-sm font-light text-[#1A1A1A] mb-1">
+              Galeri sedang diisi.
+            </p>
+            <p className="text-xs text-[#999999] font-light max-w-md mx-auto leading-relaxed">
+              Foto karya terbaru akan tampil di sini. Sementara itu, silakan
+              hubungi kami untuk menanyakan collections yang tersedia.
+            </p>
+          </div>
         </section>
       ) : (
         <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            {products.map((product, index) => (
-              <Link
-                key={product.id}
-                href={`/produk/${product.slug}`}
+          <ul className="grid grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {photos.map((photo, index) => (
+              <li
+                key={photo.id}
                 className="group relative aspect-square overflow-hidden border border-[#E5E1DA] bg-[#F3F1EE]"
-                aria-label={`Lihat ${product.title}`}
               >
+                {/*
+                  `fill` inside an `aspect-square` frame: the tile has its height
+                  from the aspect ratio before the image loads, so nothing shifts
+                  as the grid fills in. `sizes` matches the rendered width at each
+                  breakpoint, which is what lets the optimiser pick a sensible
+                  source rather than the full-width original.
+                */}
                 <Image
-                  src={product.imageUrl}
-                  alt={product.imageAlt}
+                  src={photo.imageUrl}
+                  alt={photo.altText}
                   fill
                   loading={index < 3 ? 'eager' : 'lazy'}
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 33vw"
+                  sizes="(max-width: 1024px) 50vw, 33vw"
                   className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
                 />
                 <div className="absolute inset-0 bg-[#1A1A1A]/0 group-hover:bg-[#1A1A1A]/35 transition-colors duration-500" />
-                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-[#1A1A1A]/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 bg-gradient-to-t from-[#1A1A1A]/80 to-transparent opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-500">
                   <p className="text-[10px] uppercase tracking-[0.14em] text-white font-medium truncate">
-                    {product.title}
+                    {photo.title}
                   </p>
                 </div>
-              </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </section>
       )}
 

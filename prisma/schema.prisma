@@ -126,6 +126,44 @@ model ProductImage {
   @@map("product_images")
 }
 
+/// A single photograph on the public `/galeri` page.
+///
+/// Gallery items are standalone: they are not tied to a product, they carry their
+/// own caption, and an admin controls whether each one is published at all.
+model GalleryImage {
+  id Int @id @default(autoincrement())
+
+  /// Caption shown on hover in the gallery grid. Required - a photo with no
+  /// caption cannot be described in the admin list either.
+  title       String  @db.VarChar(160)
+  /// Optional longer note. Not rendered on the storefront grid today, kept so the
+  /// admin can record context about a photo without rewriting its title.
+  description String? @db.Text
+
+  /// Cloudinary delivery URL for the photograph. NOT NULL: a gallery entry with no
+  /// picture is meaningless on a page made of pictures, so the column refuses it
+  /// at the database level as well as in Zod.
+  imageUrl String @db.VarChar(500)
+  /// Cloudinary asset id behind `imageUrl`. Stored so the remote asset can be
+  /// identified for later replacement or cleanup instead of being inferred from
+  /// the delivery URL. Nullable because an item may predate Cloudinary hosting.
+  publicId String? @db.VarChar(255)
+  /// Accessible description of the photograph. Falls back to `title` on the
+  /// storefront when an admin leaves it short.
+  altText String? @db.VarChar(255)
+
+  sortOrder Int @default(0)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Matches the storefront's `WHERE isActive = true ORDER BY sortOrder, id`
+  /// and the admin list's ordering, so both read the table through one index.
+  @@index([isActive, sortOrder])
+  @@map("gallery_images")
+}
+
 model SiteSettings {
   id             Int      @id @default(1)
   siteName       String   @db.VarChar(120)

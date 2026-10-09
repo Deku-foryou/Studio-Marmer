@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { isAdminRole } from '@/auth.config';
-import { Package, Layers, Settings2, ArrowUpRight } from 'lucide-react';
+import { Package, Layers, Images, Settings2, ArrowUpRight } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -38,16 +38,23 @@ export default async function AdminDashboardPage() {
     {
       title: 'Kategori',
       description: 'Atur kategori dan urutan tampilannya.',
-      href: '/admin/produk',
+      href: '/admin/kategori',
       Icon: Layers,
-      available: false,
+      available: true,
+    },
+    {
+      title: 'Galeri',
+      description: 'Kelola foto yang tampil di halaman galeri.',
+      href: '/admin/galeri',
+      Icon: Images,
+      available: true,
     },
     {
       title: 'Pengaturan',
       description: 'Kontak WhatsApp, Shopee, dan media sosial.',
-      href: '/admin/produk',
+      href: '/admin/pengaturan',
       Icon: Settings2,
-      available: false,
+      available: true,
     },
   ] as const;
 
@@ -101,7 +108,7 @@ export default async function AdminDashboardPage() {
           Modul
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {modules.map(({ title, description, href, Icon, available }) =>
             available ? (
               <Link

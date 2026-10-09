@@ -47,8 +47,8 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const CLOUDINARY_FOLDERS = {
   product: 'studio-marmer/products',
   category: 'studio-marmer/categories',
-  /** Reserved for a later phase; declared here so the convention is obvious. */
   site: 'studio-marmer/site',
+  gallery: 'studio-marmer/gallery',
 } as const;
 
 export type CloudinaryMediaKind = keyof typeof CLOUDINARY_FOLDERS;

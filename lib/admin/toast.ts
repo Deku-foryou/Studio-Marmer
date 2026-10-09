@@ -71,6 +71,39 @@ export const ADMIN_TOASTS = {
     tone: 'error',
     message: 'Kategori gagal dihapus. Silakan coba lagi.',
   },
+  'galeri-ditambahkan': {
+    tone: 'success',
+    message: 'Foto galeri berhasil ditambahkan.',
+  },
+  'galeri-diperbarui': {
+    tone: 'success',
+    message: 'Foto galeri berhasil diperbarui.',
+  },
+  'galeri-dihapus': {
+    tone: 'success',
+    message: 'Foto galeri berhasil dihapus.',
+  },
+  'galeri-gagal-dihapus': {
+    tone: 'error',
+    message: 'Foto galeri gagal dihapus. Silakan coba lagi.',
+  },
+  'galeri-urutan-diperbarui': {
+    tone: 'success',
+    message: 'Urutan foto galeri berhasil diperbarui.',
+  },
+  /**
+   * Raised when a gallery save actually swapped the photograph.
+   *
+   * Same reasoning as `gambar-hero-diperbarui`: replacing a photo is a success
+   * that also leaves the previous Cloudinary asset behind, and nothing in this
+   * module deletes remote media. It is worded as a consequence of the action, not
+   * as a fault.
+   */
+  'foto-galeri-diperbarui': {
+    tone: 'warning',
+    message:
+      'Foto galeri berhasil diganti. Foto sebelumnya tetap tersimpan di media library Cloudinary.',
+  },
   'pengaturan-tersimpan': {
     tone: 'success',
     message: 'Pengaturan website berhasil disimpan.',

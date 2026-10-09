@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Package,
   Layers,
+  Images,
   Settings2,
   LogOut,
   Menu,
@@ -46,6 +47,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', Icon: LayoutDashboard },
   { href: '/admin/produk', label: 'Produk', Icon: Package },
   { href: '/admin/kategori', label: 'Kategori', Icon: Layers },
+  { href: '/admin/galeri', label: 'Galeri', Icon: Images },
   { href: '/admin/pengaturan', label: 'Pengaturan', Icon: Settings2 },
 ] as const;
 
