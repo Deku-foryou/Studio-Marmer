@@ -15,21 +15,28 @@ import { ADMIN_TOASTS } from '@/lib/admin/toast';
  * Site settings form — Client Component.
  *
  * The settings row is a singleton, so this form is always in "edit" mode: it
- * shows the current database values as `defaultValue` and submits the complete
- * set of fields on every save.
+ * submits the complete set of fields on every save.
  *
- * It holds no field state of its own. `useActionState` carries the action
- * result (Indonesian messages, field errors) and `useFormStatus` drives the
- * pending state on the submit button.
+ * WHY THE FIELDS ARE CONTROLLED
+ * React 19 resets every form control to its `defaultValue` once a Server Action
+ * completes — the reset runs before the action is invoked, so a rejected save
+ * wiped the admin's input exactly as thoroughly as a successful one, and they
+ * could not tell the two apart on screen. Each field therefore holds its value in
+ * React state and is written back on every render.
+ *
+ * This matters more here than in the other modules: the settings row is a
+ * singleton, so a failed save loses every contact channel and brand asset the
+ * admin was editing in one go, and re-uploading a logo to get it back would mean
+ * another Cloudinary round trip for no reason.
  *
  * NOTIFICATIONS
- * A successful save raises a toast from the shared dashboard queue, plus a
- * warning toast when the hero photograph actually changed — replacing it leaves
- * the previous Cloudinary asset behind by design, and the admin should be told.
- * Validation and database failures stay inline beside the fields they concern.
+ * A successful save raises a toast from the shared dashboard queue, plus a warning
+ * toast when the hero photograph actually changed — replacing it leaves the previous
+ * Cloudinary asset behind by design, and the admin should be told. A failure raises
+ * an error toast and keeps every typed value on screen.
  *
- * Prisma and credentials are never imported here — validation lives in the
- * server action, and the `required`/`type` attributes are usability aids only.
+ * Prisma and credentials are never imported here — validation lives in the server
+ * action, and the `required`/`type` attributes are usability aids only.
  */
 
 interface SiteSettingsFormProps {
@@ -39,6 +46,19 @@ interface SiteSettingsFormProps {
 /** Initial `useActionState` value. Declared here because a `'use server'`
  *  module may only export async functions. */
 const IDLE_STATE: SiteSettingsFormState = { status: 'idle' };
+
+/** Every editable setting, held together so a failure restores all of them. */
+interface SiteSettingsFormValues {
+  siteName: string;
+  whatsappNumber: string;
+  email: string;
+  address: string;
+  shopeeUrl: string;
+  instagramUrl: string;
+  tiktokUrl: string;
+  heroTitle: string;
+  heroSubtitle: string;
+}
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -181,6 +201,28 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
     FormData
   >(updateSiteSettings, IDLE_STATE);
 
+  /*
+   * Field state, seeded once. Lazy on purpose: an effect that re-seeded from
+   * props would discard in-progress typing every time the action result changed,
+   * which is exactly the bug this state exists to prevent.
+   */
+  const [values, setValues] = useState<SiteSettingsFormValues>(() => ({
+    siteName: settings.siteName,
+    whatsappNumber: settings.whatsappNumber ?? '',
+    email: settings.email ?? '',
+    address: settings.address ?? '',
+    shopeeUrl: settings.shopeeUrl ?? '',
+    instagramUrl: settings.instagramUrl ?? '',
+    tiktokUrl: settings.tiktokUrl ?? '',
+    heroTitle: settings.heroTitle ?? '',
+    heroSubtitle: settings.heroSubtitle ?? '',
+  }));
+
+  const setValue = <K extends keyof SiteSettingsFormValues>(
+    key: K,
+    value: SiteSettingsFormValues[K]
+  ) => setValues((prev) => ({ ...prev, [key]: value }));
+
   const fieldErrors = state.fieldErrors ?? {};
   const { notify } = useToast();
 
@@ -195,16 +237,32 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
   const handledState = useRef<SiteSettingsFormState | null>(null);
 
   useEffect(() => {
-    if (state.status !== 'success') return;
     if (handledState.current === state) return;
 
     handledState.current = state;
+
+    if (state.status === 'error') {
+      // The failure keeps every value on screen; the toast is what guarantees the
+      // admin notices, since the banner may sit far above the field they edited.
+      if (state.message) notify({ tone: 'error', message: state.message });
+      return;
+    }
+
+    if (state.status !== 'success') return;
+
     notify(ADMIN_TOASTS['pengaturan-tersimpan']);
 
     if (state.warning) {
       notify({ tone: 'warning', message: state.warning });
     }
   }, [state, notify]);
+
+  /*
+   * No control in this form is a select or a checkbox, so nothing here needs the
+   * epoch remount that the other modules use — every field is a text input or a
+   * textarea, whose `defaultValue` React keeps in sync with `value`, making the
+   * post-action reset a no-op.
+   */
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
@@ -242,7 +300,8 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
               type="text"
               required
               maxLength={120}
-              defaultValue={settings.siteName}
+              value={values.siteName}
+              onChange={(e) => setValue('siteName', e.target.value)}
               placeholder="Studio Marmer"
               className={FIELD_CLASS}
               aria-invalid={Boolean(fieldErrors.siteName)}
@@ -287,9 +346,10 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
                 name="whatsappNumber"
                 type="text"
                 inputMode="tel"
-                maxLength={30}
-                defaultValue={settings.whatsappNumber ?? ''}
-                placeholder="+62 812-3456-7890"
+maxLength={30}
+              value={values.whatsappNumber}
+              onChange={(e) => setValue('whatsappNumber', e.target.value)}
+              placeholder="+62 812-3456-7890"
                 className={FIELD_CLASS}
                 aria-invalid={Boolean(fieldErrors.whatsappNumber)}
               />
@@ -308,9 +368,10 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
                 id="email"
                 name="email"
                 type="email"
-                maxLength={255}
-                defaultValue={settings.email ?? ''}
-                placeholder="halo@contoh.id"
+maxLength={255}
+              value={values.email}
+              onChange={(e) => setValue('email', e.target.value)}
+              placeholder="halo@contoh.id"
                 className={FIELD_CLASS}
                 aria-invalid={Boolean(fieldErrors.email)}
               />
@@ -325,10 +386,11 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
             <textarea
               id="address"
               name="address"
-              rows={3}
-              maxLength={255}
-              defaultValue={settings.address ?? ''}
-              placeholder="Alamat studio atau workshop"
+rows={3}
+                maxLength={255}
+                value={values.address}
+                onChange={(e) => setValue('address', e.target.value)}
+                placeholder="Alamat studio atau workshop"
               className={`${FIELD_CLASS} leading-relaxed resize-y`}
               aria-invalid={Boolean(fieldErrors.address)}
             />
@@ -350,9 +412,10 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
               id="shopeeUrl"
               name="shopeeUrl"
               type="url"
-              maxLength={500}
-              defaultValue={settings.shopeeUrl ?? ''}
-              placeholder="https://shopee.co.id/…"
+maxLength={500}
+                value={values.shopeeUrl}
+                onChange={(e) => setValue('shopeeUrl', e.target.value)}
+                placeholder="https://shopee.co.id/…"
               className={FIELD_CLASS}
               aria-invalid={Boolean(fieldErrors.shopeeUrl)}
             />
@@ -367,9 +430,10 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
               id="instagramUrl"
               name="instagramUrl"
               type="url"
-              maxLength={500}
-              defaultValue={settings.instagramUrl ?? ''}
-              placeholder="https://instagram.com/…"
+maxLength={500}
+                value={values.instagramUrl}
+                onChange={(e) => setValue('instagramUrl', e.target.value)}
+                placeholder="https://instagram.com/…"
               className={FIELD_CLASS}
               aria-invalid={Boolean(fieldErrors.instagramUrl)}
             />
@@ -384,9 +448,10 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
               id="tiktokUrl"
               name="tiktokUrl"
               type="url"
-              maxLength={500}
-              defaultValue={settings.tiktokUrl ?? ''}
-              placeholder="https://tiktok.com/@…"
+maxLength={500}
+                value={values.tiktokUrl}
+                onChange={(e) => setValue('tiktokUrl', e.target.value)}
+                placeholder="https://tiktok.com/@…"
               className={FIELD_CLASS}
               aria-invalid={Boolean(fieldErrors.tiktokUrl)}
             />
@@ -413,9 +478,10 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
               id="heroTitle"
               name="heroTitle"
               type="text"
-              maxLength={200}
-              defaultValue={settings.heroTitle ?? ''}
-              placeholder="Keindahan Marmer, Dibentuk untuk Setiap Ruang."
+maxLength={200}
+                value={values.heroTitle}
+                onChange={(e) => setValue('heroTitle', e.target.value)}
+                placeholder="Keindahan Marmer, Dibentuk untuk Setiap Ruang."
               className={FIELD_CLASS}
               aria-invalid={Boolean(fieldErrors.heroTitle)}
             />
@@ -429,10 +495,11 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
             <textarea
               id="heroSubtitle"
               name="heroSubtitle"
-              rows={3}
-              maxLength={500}
-              defaultValue={settings.heroSubtitle ?? ''}
-              placeholder="Kalimat singkat yang tampil di bawah judul hero."
+rows={3}
+                maxLength={500}
+                value={values.heroSubtitle}
+                onChange={(e) => setValue('heroSubtitle', e.target.value)}
+                placeholder="Kalimat singkat yang tampil di bawah judul hero."
               className={`${FIELD_CLASS} leading-relaxed resize-y`}
               aria-invalid={Boolean(fieldErrors.heroSubtitle)}
             />

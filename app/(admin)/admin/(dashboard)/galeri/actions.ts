@@ -184,7 +184,22 @@ export async function updateGalleryItem(
     return { success: false, error: 'Foto galeri tidak ditemukan.' };
   }
 
-  const existing = await getAdminGalleryItemById(id);
+  /*
+   * The existence check is a read, so it is wrapped: an action that throws returns
+   * no state at all, React tears the form down into the nearest error boundary, and
+   * everything the admin had typed — including the photograph they just uploaded —
+   * is gone. A fixed error state keeps the form mounted and retryable.
+   *
+   * Declared outside the try because the comparison below needs the stored image URL
+   * to tell a replacement from a metadata-only edit.
+   */
+  let existing: Awaited<ReturnType<typeof getAdminGalleryItemById>>;
+
+  try {
+    existing = await getAdminGalleryItemById(id);
+  } catch {
+    return { success: false, error: 'Gagal mengupdate foto galeri. Silakan coba lagi.' };
+  }
 
   if (!existing) {
     return { success: false, error: 'Foto galeri tidak ditemukan.' };

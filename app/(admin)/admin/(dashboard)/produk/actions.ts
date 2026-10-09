@@ -163,19 +163,30 @@ export async function createProduct(
   }
 
   const input = parsed.data;
-
-  if (!(await categoryExists(input.categoryId))) {
-    return {
-      status: 'error',
-      message: 'Periksa kembali data yang diisi.',
-      fieldErrors: { categoryId: 'Kategori tidak ditemukan.' },
-    };
-  }
-
-  const slug = await resolveUniqueSlug(input.name);
   const specifications = specificationsToJson(input.specifications);
 
+  /*
+   * EVERYTHING THAT TOUCHES THE DATABASE IS INSIDE THIS TRY
+   *
+   * The category lookup and the slug resolution are reads, and reads fail too —
+   * a dropped connection or an unreachable host rejects the action just as a
+   * failed write does. An action that throws does not return a state object at all:
+   * React tears the form down into the nearest error boundary, which replaces the
+   * page and destroys every field the admin had filled in. Returning a fixed
+   * error state instead keeps the form mounted with its values intact, so the
+   * admin can simply submit again once the database is reachable.
+   */
   try {
+    if (!(await categoryExists(input.categoryId))) {
+      return {
+        status: 'error',
+        message: 'Periksa kembali data yang diisi.',
+        fieldErrors: { categoryId: 'Kategori tidak ditemukan.' },
+      };
+    }
+
+    const slug = await resolveUniqueSlug(input.name);
+
     const created = await prisma.product.create({
       data: {
         name: input.name,
@@ -261,11 +272,24 @@ export async function updateProduct(
     };
   }
 
-  const existing = await getAdminProductById(productId);
-  if (!existing) {
+  /*
+   * The existence check is a read, and it sits inside the same try as the write for
+   * the reason given in createProduct: an action that throws is torn down into an
+   * error boundary, taking every field the admin filled in with it. A fixed error
+   * state keeps the form and its values on screen.
+   */
+  try {
+    const existing = await getAdminProductById(productId);
+    if (!existing) {
+      return {
+        status: 'error',
+        message: 'Produk tidak ditemukan.',
+      };
+    }
+  } catch {
     return {
       status: 'error',
-      message: 'Produk tidak ditemukan.',
+      message: 'Produk gagal disimpan. Silakan coba lagi.',
     };
   }
 
@@ -280,18 +304,17 @@ export async function updateProduct(
   }
 
   const input = parsed.data;
-
-  if (!(await categoryExists(input.categoryId))) {
-    return {
-      status: 'error',
-      message: 'Periksa kembali data yang diisi.',
-      fieldErrors: { categoryId: 'Kategori tidak ditemukan.' },
-    };
-  }
-
   const specifications = specificationsToJson(input.specifications);
 
   try {
+    if (!(await categoryExists(input.categoryId))) {
+      return {
+        status: 'error',
+        message: 'Periksa kembali data yang diisi.',
+        fieldErrors: { categoryId: 'Kategori tidak ditemukan.' },
+      };
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id: productId },

@@ -13,21 +13,37 @@ import {
   type ProductFormState,
 } from '@/lib/validation/product-action-state';
 import { useToast } from '@/components/admin/ToastProvider';
+import { useFieldEpoch } from '@/components/admin/useFieldEpoch';
 import { ADMIN_TOASTS } from '@/lib/admin/toast';
 
 /**
  * Product create/edit form — Client Component.
  *
- * Holds only UI state: repeatable specification and image rows, and the action
- * result used for Indonesian error messages and the success toast.
- *
  * It never imports Prisma or any credential. Validation lives in the server
  * actions; the `required`/`type` attributes here are usability aids only.
  *
+ * WHY THE FIELDS ARE CONTROLLED
+ * React 19 resets every form control to its `defaultValue` once a Server Action
+ * completes — the DOM reset runs before the action is even invoked
+ * (`requestFormReset` → `form.reset()`), so it happens on a failed save exactly
+ * as it does on a successful one. A form built from `defaultValue` alone therefore
+ * silently restored the values the server-rendered page was built with, wiping
+ * everything the admin had typed. These fields hold their value in React state and
+ * write it back on every render, which is what makes a rejected submission
+ * recoverable without retyping.
+ *
+ * `useFieldEpoch` covers the control types React does NOT keep in sync for a
+ * reset: `<select>` only refreshes `defaultSelected` when it first mounts, and a
+ * checkbox is re-checked from `checked` without updating `defaultChecked`. Those are
+ * keyed on the epoch, which advances when an action result arrives, so they are
+ * remounted from current state. Text and textarea fields need no key — React writes
+ * their `defaultValue` alongside `value`, so the reset is a no-op for them.
+ *
  * SUCCESS VS ERROR
  * A successful save raises a toast from the shared dashboard queue — one surface
- * for create, update and delete alike. A failure stays inline, next to the fields
- * it concerns.
+ * for create, update and delete alike. A failure keeps every value on screen, adds
+ * the field-level messages, and raises an error toast so a failure is noticed even
+ * when the offending field is scrolled out of view.
  */
 
 interface ProductFormProps {
@@ -37,6 +53,61 @@ interface ProductFormProps {
 }
 
 type SpecRow = { label: string; value: string };
+
+/**
+ * Every editable field, held in one object.
+ *
+ * A single state object rather than one `useState` per input: the server action
+ * already reads a flat set of named fields, and keeping them together means
+ * "restore everything the admin typed" is one state write instead of thirty.
+ */
+interface ProductFormValues {
+  name: string;
+  categoryId: string;
+  shortDescription: string;
+  description: string;
+  pricingType: string;
+  price: string;
+  originalPrice: string;
+  stoneType: string;
+  color: string;
+  dimensions: string;
+  weightGrams: string;
+  material: string;
+  craftingTime: string;
+  shopeeUrl: string;
+  isAvailable: boolean;
+  isUniquePiece: boolean;
+  isFeatured: boolean;
+  whatsappEnabled: boolean;
+}
+
+/** Seeds the editable state from the row being edited, or blanks for create. */
+function initialValues(product?: AdminProductDetail): ProductFormValues {
+  return {
+    name: product?.name ?? '',
+    categoryId: product ? String(product.categoryId) : '',
+    shortDescription: product?.shortDescription ?? '',
+    description: product?.description ?? '',
+    pricingType: product?.pricingType ?? 'FIXED',
+    price: product ? String(product.price) : '',
+    originalPrice:
+      product?.originalPrice !== null && product?.originalPrice !== undefined
+        ? String(product.originalPrice)
+        : '',
+    stoneType: product?.stoneType ?? '',
+    color: product?.color ?? '',
+    dimensions: product?.dimensions ?? '',
+    weightGrams: product ? String(product.weightGrams) : '',
+    material: product?.material ?? '',
+    craftingTime: product?.craftingTime ?? '',
+    shopeeUrl: product?.shopeeUrl ?? '',
+    isAvailable: product ? product.isAvailable : true,
+    isUniquePiece: product ? product.isUniquePiece : false,
+    isFeatured: product ? product.isFeatured : false,
+    whatsappEnabled: product ? product.whatsappEnabled : true,
+  };
+}
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -90,11 +161,33 @@ export function ProductForm({ categories, product }: ProductFormProps) {
     IDLE_STATE
   );
 
+  /*
+   * The editable state. Seeding is lazy on purpose: this must read `product` from
+   * the first render and then be left alone, because an effect that re-seeded it
+   * whenever `product` changed would overwrite the admin's in-progress typing.
+   */
+  const [values, setValues] = useState<ProductFormValues>(() => initialValues(product));
+
+  const setValue = <K extends keyof ProductFormValues>(
+    key: K,
+    value: ProductFormValues[K]
+  ) => setValues((prev) => ({ ...prev, [key]: value }));
+
   const [specs, setSpecs] = useState<SpecRow[]>(
     product && product.specifications.length > 0
       ? product.specifications
       : [{ label: '', value: '' }]
   );
+
+  /** Edits one half of one specification row, leaving the other alone. */
+  const setSpecAt = (index: number, half: keyof SpecRow, value: string) =>
+    setSpecs((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [half]: value } : row))
+    );
+
+  // Advances once per action result, remounting the controls React's form reset
+  // would otherwise leave showing their pre-submit state.
+  const epoch = useFieldEpoch(state, IDLE_STATE);
 
   const fieldErrors = state.fieldErrors ?? {};
 
@@ -116,13 +209,23 @@ export function ProductForm({ categories, product }: ProductFormProps) {
   const handledState = useRef<ProductFormState | null>(null);
 
   useEffect(() => {
-    if (state.status !== 'success') return;
     if (handledState.current === state) return;
 
     handledState.current = state;
-    notify(
-      ADMIN_TOASTS[isEdit ? 'produk-diperbarui' : 'produk-ditambahkan']
-    );
+
+    if (state.status === 'success') {
+      notify(ADMIN_TOASTS[isEdit ? 'produk-diperbarui' : 'produk-ditambahkan']);
+      return;
+    }
+
+    // A failure is announced on the shared queue as well as inline. The inline
+    // banner and the field messages are the useful placement — they name the
+    // problem and sit beside the input — but a product form is several screens
+    // tall, so a rejection whose message is above the fold can read as "nothing
+    // happened". Only raised for a genuine error result, never on mount.
+    if (state.status === 'error' && state.message) {
+      notify({ tone: 'error', message: state.message });
+    }
   }, [state, isEdit, notify]);
 
   return (
@@ -171,7 +274,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               type="text"
               required
               maxLength={200}
-              defaultValue={product?.name ?? ''}
+              value={values.name}
+              onChange={(e) => setValue('name', e.target.value)}
               placeholder="Contoh: Tempat Tisu Marmer Carrara"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.name)}
@@ -192,11 +296,19 @@ export function ProductForm({ categories, product }: ProductFormProps) {
             >
               Kategori *
             </label>
+            {/*
+              Keyed on the epoch: React refreshes a select's `defaultSelected`
+              only when it first mounts, so after the post-action form reset this
+              one would snap back to the category it was mounted with. Remounting
+              re-seeds it from `values`, which still holds the admin's choice.
+            */}
             <select
+              key={`category-${epoch}`}
               id="categoryId"
               name="categoryId"
               required
-              defaultValue={product?.categoryId ?? ''}
+              value={values.categoryId}
+              onChange={(e) => setValue('categoryId', e.target.value)}
               className="w-full border border-[#E5E1DA] bg-white focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.categoryId)}
             >
@@ -223,7 +335,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               type="text"
               required
               maxLength={500}
-              defaultValue={product?.shortDescription ?? ''}
+              value={values.shortDescription}
+              onChange={(e) => setValue('shortDescription', e.target.value)}
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.shortDescription)}
             />
@@ -242,7 +355,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               name="description"
               required
               rows={5}
-              defaultValue={product?.description ?? ''}
+              value={values.description}
+              onChange={(e) => setValue('description', e.target.value)}
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light leading-relaxed resize-y"
               aria-invalid={Boolean(fieldErrors.description)}
             />
@@ -264,10 +378,12 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               Tipe Harga *
             </label>
             <select
+              key={`pricing-${epoch}`}
               id="pricingType"
               name="pricingType"
               required
-              defaultValue={product?.pricingType ?? 'FIXED'}
+              value={values.pricingType}
+              onChange={(e) => setValue('pricingType', e.target.value)}
               className="w-full border border-[#E5E1DA] bg-white focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
             >
               <option value="FIXED">Harga Tetap</option>
@@ -291,7 +407,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               min={1}
               step="1"
               required
-              defaultValue={product ? String(product.price) : ''}
+              value={values.price}
+              onChange={(e) => setValue('price', e.target.value)}
               placeholder="185000"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.price)}
@@ -313,11 +430,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               inputMode="numeric"
               min={1}
               step="1"
-              defaultValue={
-                product?.originalPrice !== null && product?.originalPrice !== undefined
-                  ? String(product.originalPrice)
-                  : ''
-              }
+              value={values.originalPrice}
+              onChange={(e) => setValue('originalPrice', e.target.value)}
               placeholder="215000"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.originalPrice)}
@@ -350,7 +464,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               type="text"
               required
               maxLength={120}
-              defaultValue={product?.stoneType ?? ''}
+              value={values.stoneType}
+              onChange={(e) => setValue('stoneType', e.target.value)}
               placeholder="Carrara"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.stoneType)}
@@ -371,7 +486,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               type="text"
               required
               maxLength={120}
-              defaultValue={product?.color ?? ''}
+              value={values.color}
+              onChange={(e) => setValue('color', e.target.value)}
               placeholder="Putih abu-abu"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.color)}
@@ -392,7 +508,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               type="text"
               required
               maxLength={120}
-              defaultValue={product?.dimensions ?? ''}
+              value={values.dimensions}
+              onChange={(e) => setValue('dimensions', e.target.value)}
               placeholder="15 x 12 x 11 cm"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.dimensions)}
@@ -415,7 +532,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               min={1}
               step="1"
               required
-              defaultValue={product ? String(product.weightGrams) : ''}
+              value={values.weightGrams}
+              onChange={(e) => setValue('weightGrams', e.target.value)}
               placeholder="2400"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.weightGrams)}
@@ -435,7 +553,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               name="material"
               type="text"
               maxLength={120}
-              defaultValue={product?.material ?? ''}
+              value={values.material}
+              onChange={(e) => setValue('material', e.target.value)}
               placeholder="Marmer Carrara"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
             />
@@ -454,7 +573,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               name="craftingTime"
               type="text"
               maxLength={120}
-              defaultValue={product?.craftingTime ?? ''}
+              value={values.craftingTime}
+              onChange={(e) => setValue('craftingTime', e.target.value)}
               placeholder="5-7 hari kerja"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
             />
@@ -471,10 +591,17 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           {specs.map((row, index) => (
             <div key={index} className="flex items-start gap-2">
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/*
+                  Controlled for the same reason as the fields above: these rows
+                  live in `specs`, but React's post-action reset would have wiped
+                  whatever was typed into an uncontrolled input, leaving the stored
+                  row and the visible row disagreeing.
+                */}
                 <input
                   type="text"
                   name={`spec_${index}_label`}
-                  defaultValue={row.label}
+                  value={row.label}
+                  onChange={(e) => setSpecAt(index, 'label', e.target.value)}
                   placeholder="Label (mis. Finishing)"
                   aria-label={`Label spesifikasi baris ${index + 1}`}
                   className="border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
@@ -482,7 +609,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
                 <input
                   type="text"
                   name={`spec_${index}_value`}
-                  defaultValue={row.value}
+                  value={row.value}
+                  onChange={(e) => setSpecAt(index, 'value', e.target.value)}
                   placeholder="Nilai (mis. Polished)"
                   aria-label={`Nilai spesifikasi baris ${index + 1}`}
                   className="border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
@@ -549,7 +677,8 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               name="shopeeUrl"
               type="url"
               maxLength={500}
-              defaultValue={product?.shopeeUrl ?? ''}
+              value={values.shopeeUrl}
+              onChange={(e) => setValue('shopeeUrl', e.target.value)}
               placeholder="https://shopee.co.id/…"
               className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
               aria-invalid={Boolean(fieldErrors.shopeeUrl)}
@@ -560,42 +689,53 @@ export function ProductForm({ categories, product }: ProductFormProps) {
             </p>
           </div>
 
-          {[
-            {
-              name: 'isAvailable',
-              label: 'Tersedia',
-              hint: 'Produk tampil di katalog pelanggan',
-              defaultChecked: product ? product.isAvailable : true,
-            },
-            {
-              name: 'isUniquePiece',
-              label: 'Satu-satunya',
-              hint: 'Menampilkan label satu-satunya',
-              defaultChecked: product ? product.isUniquePiece : false,
-            },
-            {
-              name: 'isFeatured',
-              label: 'Unggulan',
-              hint: 'Muncul di bagian produk unggulan',
-              defaultChecked: product ? product.isFeatured : false,
-            },
-            {
-              name: 'whatsappEnabled',
-              label: 'Aktifkan WhatsApp',
-              hint: 'Menampilkan tombol pesan via WhatsApp',
-              defaultChecked: product ? product.whatsappEnabled : true,
-            },
-          ].map((flag) => (
+          {(
+            [
+              {
+                name: 'isAvailable',
+                label: 'Tersedia',
+                hint: 'Produk tampil di katalog pelanggan',
+              },
+              {
+                name: 'isUniquePiece',
+                label: 'Satu-satunya',
+                hint: 'Menampilkan label satu-satunya',
+              },
+              {
+                name: 'isFeatured',
+                label: 'Unggulan',
+                hint: 'Muncul di bagian produk unggulan',
+              },
+              {
+                name: 'whatsappEnabled',
+                label: 'Aktifkan WhatsApp',
+                hint: 'Menampilkan tombol pesan via WhatsApp',
+              },
+            ] as const
+          ).map((flag) => (
             <label
               key={flag.name}
               htmlFor={flag.name}
               className="flex items-start gap-2.5 cursor-pointer"
             >
+              {/*
+                Keyed on the epoch: React updates a checkbox's `checked` from the
+                render but leaves `defaultChecked` at its mount-time value, so the
+                post-action form reset would un-tick whatever the admin had just
+                toggled. Remounting re-seeds it from `values`.
+              */}
               <input
+                key={`${flag.name}-${epoch}`}
                 id={flag.name}
                 name={flag.name}
                 type="checkbox"
-                defaultChecked={flag.defaultChecked}
+                checked={values[flag.name]}
+                onChange={(e) =>
+                  setValue(
+                    flag.name,
+                    e.target.checked as ProductFormValues[typeof flag.name]
+                  )
+                }
                 className="mt-0.5 w-4 h-4 accent-[#1A1A1A]"
               />
               <span>

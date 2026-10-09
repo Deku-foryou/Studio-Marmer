@@ -96,11 +96,16 @@ export async function createCategory(
 
   const data = result.data
 
-  // ---- generate deterministic, unique slug -----------------------------------
-  const slug = await resolveUniqueCategorySlug(data.name)
-
   // ---- persist --------------------------------------------------------------
+  //
+  // The slug resolution is a database read and lives inside this try on purpose: an
+  // action that *throws* returns no state at all, so React tears the form down into
+  // the nearest error boundary and every field the admin typed is lost. A fixed
+  // error state keeps the form mounted with its values intact so it can be resubmitted.
   try {
+    // ---- generate deterministic, unique slug -------------------------------
+    const slug = await resolveUniqueCategorySlug(data.name)
+
     const created = await prisma.category.create({
       data: {
         name: data.name,
@@ -170,10 +175,18 @@ export async function updateCategory(
   const data = result.data
 
   // ---- the slug is read only to report it back and to prove the row exists ---
-  const existing = await prisma.category.findUnique({
-    where: { id },
-    select: { slug: true },
-  })
+  // The existence check is a read, so it is wrapped too: a rejected read would
+  // otherwise propagate out of the action, which React turns into an error
+  // boundary and a blank form rather than a recoverable message.
+  let existing: { slug: string } | null
+  try {
+    existing = await prisma.category.findUnique({
+      where: { id },
+      select: { slug: true },
+    })
+  } catch {
+    return { success: false, error: 'Gagal mengupdate kategori. Silakan coba lagi.' }
+  }
 
   if (!existing) {
     return { success: false, error: 'Kategori tidak ditemukan.' }
@@ -227,9 +240,21 @@ export async function deleteCategory(id: number): Promise<CategoryActionResult> 
   }
 
   // ---- check product count before delete ------------------------------------
-  const count = await prisma.product.count({
-    where: { categoryId: id },
-  })
+  //
+  // Wrapped so a failed read cannot reject the action: an action that throws
+  // returns no state object, and the caller is a dialog inside the list, so the
+  // rejection would surface as an error boundary rather than a readable message.
+  let count: number
+  try {
+    count = await prisma.product.count({
+      where: { categoryId: id },
+    })
+  } catch {
+    return {
+      success: false,
+      error: 'Gagal menghapus kategori. Silakan coba lagi.',
+    }
+  }
 
   // ---- if products exist, reject with Indonesian message ----------------------
   if (count > 0) {

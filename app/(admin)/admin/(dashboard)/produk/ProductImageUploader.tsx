@@ -60,9 +60,26 @@ export default function ProductImageUploader({
   initialImages,
   fieldError,
 }: ProductImageUploaderProps) {
+  /*
+   * The draft list is React state, not form state: it is deliberately independent
+   * of the surrounding form's reset, because a rejected save must not discard
+   * photographs the admin has already uploaded to Cloudinary.
+   *
+   * That independence is why the alt-text inputs below are controlled as well.
+   * An uncontrolled `<input defaultValue>` inside the form is reset by React after
+   * every Server Action, which silently discarded typed alt text whenever any other
+   * field failed validation.
+   */
   const [images, setImages] = useState<ProductImageDraft[]>(() =>
     initialImages.map((image) => ({ ...image }))
   );
+
+  /** Writes alt text for one slot, leaving the image reference untouched. */
+  const setAltTextAt = useCallback((index: number, altText: string) => {
+    setImages((prev) =>
+      prev.map((image, i) => (i === index ? { ...image, altText } : image))
+    );
+  }, []);
   const [pending, setPending] = useState<PendingUpload[]>([]);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -277,7 +294,8 @@ export default function ProductImageUploader({
                   id={`image_${index}_alt`}
                   type="text"
                   name={`image_${index}_alt`}
-                  defaultValue={image.altText}
+                  value={image.altText}
+                  onChange={(e) => setAltTextAt(index, e.target.value)}
                   placeholder="Deskripsi singkat foto"
                   className="w-full border border-[#E5E1DA] focus:border-[#1A1A1A] outline-none text-[13px] px-3.5 py-2.5 font-light"
                 />
