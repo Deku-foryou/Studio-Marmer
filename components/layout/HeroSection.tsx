@@ -33,6 +33,12 @@ interface HeroSectionProps {
 export default function HeroSection({ settings }: HeroSectionProps) {
   const headline = settings.heroTitle?.trim();
   const subline = settings.heroSubtitle?.trim();
+  /*
+   * Trimmed and blank-checked rather than merely null-checked: a row that was
+   * saved with only whitespace would otherwise produce `url("")` and request the
+   * page itself as the hero photograph.
+   */
+  const heroImageUrl = settings.heroImageUrl?.trim() || undefined;
   const whatsappHref = settings.whatsappNumber
     ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, '')}`
     : null;
@@ -43,7 +49,29 @@ export default function HeroSection({ settings }: HeroSectionProps) {
       aria-label="Studio Marmer"
     >
         {/* ─── Background photograph ──────────────────────────────── */}
-        <div className="hero-backdrop absolute inset-0 -z-10" aria-hidden="true" />
+        {/*
+          The photograph is a CSS background layer, not an <Image>, so `cover`
+          does the cropping and nothing hydrates to render it.
+
+          An admin-uploaded image replaces the bundled asset by overriding
+          background-image inline. The class still carries the crop, positioning
+          and breakpoint rules, so swapping the source cannot change the layout.
+          When `heroImageUrl` is null the element falls through to the class and
+          renders /images/hero-marble-vanity-1672.webp — the pre-existing
+          behaviour, which is what every install sees until an admin sets one.
+
+          `backgroundImage` is a plain inline property, not a stylesheet, so it
+          outranks the class rule without needing `!important`.
+        */}
+        <div
+          className="hero-backdrop absolute inset-0 -z-10"
+          style={
+            heroImageUrl
+              ? { backgroundImage: `url("${heroImageUrl}")` }
+              : undefined
+          }
+          aria-hidden="true"
+        />
 
         {/* Veil: softens the left column for legibility and fades the top edge
             into the sticky navbar. Warm off-white, never a dark scrim. */}

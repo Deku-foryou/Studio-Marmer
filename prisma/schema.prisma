@@ -129,7 +129,14 @@ model ProductImage {
 model SiteSettings {
   id             Int      @id @default(1)
   siteName       String   @db.VarChar(120)
+  /// Cloudinary delivery URL for the site logo, or a site-relative path for a
+  /// logo that predates Cloudinary hosting. Nullable — the storefront falls back
+  /// to the text wordmark when this is null.
   logoUrl        String?  @db.VarChar(500)
+  /// Cloudinary asset id behind `logoUrl`. Stored so the remote asset can be
+  /// replaced or cleaned up later without guessing from the delivery URL. Always
+  /// written and cleared together with `logoUrl`.
+  logoPublicId   String?  @db.VarChar(255)
   whatsappNumber String?  @db.VarChar(30)
   shopeeUrl      String?  @db.VarChar(500)
   instagramUrl   String?  @db.VarChar(500)
@@ -138,6 +145,13 @@ model SiteSettings {
   address        String?  @db.VarChar(255)
   heroTitle      String?  @db.VarChar(200)
   heroSubtitle   String?  @db.VarChar(500)
+  /// Cloudinary delivery URL for the homepage hero photograph. Nullable — when
+  /// it is null the hero falls back to the bundled static asset, which is also
+  /// what every existing installation renders until an admin sets one.
+  heroImageUrl   String?  @db.VarChar(500)
+  /// Cloudinary asset id behind `heroImageUrl`. Written and cleared together
+  /// with `heroImageUrl`, for the same reason as `logoPublicId`.
+  heroImagePublicId String? @db.VarChar(255)
   updatedAt      DateTime @updatedAt
 
   @@map("site_settings")

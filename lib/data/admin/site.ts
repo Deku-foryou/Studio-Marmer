@@ -22,7 +22,7 @@ if (typeof window !== 'undefined') {
 }
 
 import { prisma } from '@/lib/db/prisma';
-import type { SiteSettingsInput } from '@/lib/validation/site-settings';
+import { toSiteMediaColumns, type SiteSettingsInput } from '@/lib/validation/site-settings';
 
 /** The only primary key the singleton may ever have. */
 export const SITE_SETTINGS_ID = 1;
@@ -30,6 +30,7 @@ export const SITE_SETTINGS_ID = 1;
 /** Every `site_settings` column except `siteName`, which is required. */
 type OptionalSettingField =
   | 'logoUrl'
+  | 'logoPublicId'
   | 'whatsappNumber'
   | 'shopeeUrl'
   | 'instagramUrl'
@@ -37,7 +38,9 @@ type OptionalSettingField =
   | 'email'
   | 'address'
   | 'heroTitle'
-  | 'heroSubtitle';
+  | 'heroSubtitle'
+  | 'heroImageUrl'
+  | 'heroImagePublicId';
 
 /**
  * Admin-facing settings shape: the editable fields plus row metadata.
@@ -50,6 +53,7 @@ type OptionalSettingField =
  */
 export interface AdminSiteSettings extends Omit<SiteSettingsInput, OptionalSettingField> {
   logoUrl: string | null;
+  logoPublicId: string | null;
   whatsappNumber: string | null;
   shopeeUrl: string | null;
   instagramUrl: string | null;
@@ -58,6 +62,8 @@ export interface AdminSiteSettings extends Omit<SiteSettingsInput, OptionalSetti
   address: string | null;
   heroTitle: string | null;
   heroSubtitle: string | null;
+  heroImageUrl: string | null;
+  heroImagePublicId: string | null;
   id: number;
   updatedAt: string;
 }
@@ -66,6 +72,7 @@ const SETTINGS_SELECT = {
   id: true,
   siteName: true,
   logoUrl: true,
+  logoPublicId: true,
   whatsappNumber: true,
   shopeeUrl: true,
   instagramUrl: true,
@@ -74,6 +81,8 @@ const SETTINGS_SELECT = {
   address: true,
   heroTitle: true,
   heroSubtitle: true,
+  heroImageUrl: true,
+  heroImagePublicId: true,
   updatedAt: true,
 } as const;
 
@@ -102,6 +111,24 @@ export async function getAdminSiteSettings(): Promise<{
 }
 
 /**
+ * Clears the logo columns on the singleton row.
+ *
+ * Deliberately not an `upsert`: there is no create branch. If the settings row
+ * does not exist there is no logo to clear, and inventing a row here would
+ * stamp a half-populated settings record that the admin never saved.
+ *
+ * The two columns are written in a single `updateMany` so they can never drift
+ * apart, and neither `updatedAt` nor any other setting is included — this is a
+ * targeted unlink, not a settings write.
+ */
+export async function clearAdminSiteLogo(id: number): Promise<void> {
+  await prisma.siteSettings.updateMany({
+    where: { id },
+    data: { logoUrl: null, logoPublicId: null },
+  });
+}
+
+/**
  * Writes the singleton row at `id = 1`.
  *
  * Uses `upsert` keyed on `SITE_SETTINGS_ID` rather than `create`, so a save can
@@ -110,16 +137,37 @@ export async function getAdminSiteSettings(): Promise<{
  *
  * The input has already been validated and normalised by the server action —
  * this layer performs no second opinion on the values.
+ *
+ * IMAGE HANDLING
+ * The submitted media fields are authoritative. Keeping an image is just the
+ * uploader re-submitting the values it already holds, and removing it is
+ * submitting blanks, so there is no separate "unchanged" case to special-case.
+ * Replacing an image leaves the previous Cloudinary asset in place: deleting
+ * remote media needs a trusted server-side context this codebase does not have
+ * yet, and losing an asset the admin may still want is worse than leaving one
+ * unreferenced for a later cleanup pass.
  */
 export async function updateAdminSiteSettings(
   input: SiteSettingsInput
 ): Promise<AdminSiteSettings> {
+  // Resolved once so both the create and the update branch write the same
+  // url/publicId pairs.
+  const logo = toSiteMediaColumns({
+    url: input.logoUrl,
+    publicId: input.logoPublicId,
+  });
+  const hero = toSiteMediaColumns({
+    url: input.heroImageUrl,
+    publicId: input.heroImagePublicId,
+  });
+
   const row = await prisma.siteSettings.upsert({
     where: { id: SITE_SETTINGS_ID },
     create: {
       id: SITE_SETTINGS_ID,
       siteName: input.siteName,
-      logoUrl: input.logoUrl ?? null,
+      logoUrl: logo.url,
+      logoPublicId: logo.publicId,
       whatsappNumber: input.whatsappNumber ?? null,
       shopeeUrl: input.shopeeUrl ?? null,
       instagramUrl: input.instagramUrl ?? null,
@@ -128,10 +176,13 @@ export async function updateAdminSiteSettings(
       address: input.address ?? null,
       heroTitle: input.heroTitle ?? null,
       heroSubtitle: input.heroSubtitle ?? null,
+      heroImageUrl: hero.url,
+      heroImagePublicId: hero.publicId,
     },
     update: {
       siteName: input.siteName,
-      logoUrl: input.logoUrl ?? null,
+      logoUrl: logo.url,
+      logoPublicId: logo.publicId,
       whatsappNumber: input.whatsappNumber ?? null,
       shopeeUrl: input.shopeeUrl ?? null,
       instagramUrl: input.instagramUrl ?? null,
@@ -140,6 +191,8 @@ export async function updateAdminSiteSettings(
       address: input.address ?? null,
       heroTitle: input.heroTitle ?? null,
       heroSubtitle: input.heroSubtitle ?? null,
+      heroImageUrl: hero.url,
+      heroImagePublicId: hero.publicId,
     },
     select: SETTINGS_SELECT,
   });

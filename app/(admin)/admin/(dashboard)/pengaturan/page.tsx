@@ -26,6 +26,7 @@ export default async function AdminSiteSettingsPage() {
     id: 1,
     siteName: 'Studio Marmer',
     logoUrl: null,
+    logoPublicId: null,
     whatsappNumber: null,
     shopeeUrl: null,
     instagramUrl: null,
@@ -34,6 +35,8 @@ export default async function AdminSiteSettingsPage() {
     address: null,
     heroTitle: null,
     heroSubtitle: null,
+    heroImageUrl: null,
+    heroImagePublicId: null,
     updatedAt: new Date(0).toISOString(),
   };
 

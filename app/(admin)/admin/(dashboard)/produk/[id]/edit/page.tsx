@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 import { getAdminCategories, getAdminProductById } from '@/lib/data/admin/products';
 import { ProductForm } from '../../ProductForm';
@@ -12,16 +12,19 @@ export const metadata: Metadata = {
 
 interface EditProductPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string }>;
 }
 
-/** Product edit — Server Component. Loads product + categories for the form. */
-export default async function EditProductPage({
-  params,
-  searchParams,
-}: EditProductPageProps) {
+/**
+ * Product edit — Server Component. Loads product + categories for the form.
+ *
+ * No `searchParams` here any more. `createProduct` used to redirect with
+ * `?created=1` so this page could render an inline "produk berhasil dibuat"
+ * banner; that notification is now a toast delivered by `ToastFlashListener`,
+ * so the page neither reads the param nor renders the banner. The create
+ * action's own redirect still passes `?toast=produk-ditambahkan`.
+ */
+export default async function EditProductPage({ params }: EditProductPageProps) {
   const { id } = await params;
-  const { created } = await searchParams;
 
   const productId = Number(id);
 
@@ -48,22 +51,6 @@ export default async function EditProductPage({
         <ArrowLeft size={12} strokeWidth={1.5} aria-hidden="true" />
         Kembali ke Produk
       </Link>
-
-      {created === '1' && (
-        <div
-          role="status"
-          className="flex items-start gap-2.5 border border-[#5C8A5C]/40 bg-[#5C8A5C]/5 px-4 py-3 mb-6"
-        >
-          <CheckCircle2
-            size={15}
-            className="text-[#5C8A5C] mt-0.5 flex-shrink-0"
-            aria-hidden="true"
-          />
-          <p className="text-xs text-[#41693F] leading-relaxed">
-            Produk berhasil dibuat. Periksa kembali detail di bawah ini.
-          </p>
-        </div>
-      )}
 
       <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-1.5">
         Produk

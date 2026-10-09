@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import { AlertCircle, Trash2 } from 'lucide-react';
 
 import { deleteCategory } from './actions';
+import { useToast } from '@/components/admin/ToastProvider';
+import { ADMIN_TOASTS } from '@/lib/admin/toast';
 
 /**
  * Delete control — Client Component.
@@ -12,6 +14,10 @@ import { deleteCategory } from './actions';
  * mis-click cannot remove a category. The action itself re-checks the session
  * and the role server-side, and refuses to delete a category that still has
  * products attached; hiding this button is not the authorization.
+ *
+ * Failure keeps the dialog open with the reason inline — it is scoped to the
+ * exact thing the admin is being asked to confirm. Success raises a toast and
+ * closes the dialog, because the row it referred to no longer exists.
  */
 export default function DeleteCategoryButton({
   categoryId,
@@ -25,12 +31,25 @@ export default function DeleteCategoryButton({
   const [isConfirming, setIsConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const { notify } = useToast();
 
   function handleDelete() {
     startTransition(async () => {
       const result = await deleteCategory(categoryId);
 
-      if (result.success) return;
+      if (result.success) {
+        /*
+         * No redirect happens here, so the toast is raised directly instead of
+         * through the URL: the dashboard layout — and with it the provider
+         * holding this queue — is still mounted, so there is nothing to survive.
+         * `deleteCategory` returns the same `{ id, name, slug }` shape on success
+         * for both operations, so the wording comes from the catalogue keyed on
+         * this component's meaning rather than from the payload.
+         */
+        notify(ADMIN_TOASTS['kategori-dihapus']);
+        setIsConfirming(false);
+        return;
+      }
 
       // A rejection keeps the dialog open so the reason stays visible.
       setError(result.error);

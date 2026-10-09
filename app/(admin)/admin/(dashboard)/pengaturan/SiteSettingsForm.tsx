@@ -1,11 +1,15 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { AlertCircle, CheckCircle2, Loader2, Save } from 'lucide-react';
+import { AlertCircle, Loader2, Save, Trash2 } from 'lucide-react';
 
-import { updateSiteSettings, type SiteSettingsFormState } from './actions';
+import { updateSiteSettings, removeSiteLogo } from './actions';
+import SiteImageUploader from './SiteImageUploader';
+import type { SiteSettingsFormState } from './actions';
 import type { AdminSiteSettings } from '@/lib/data/admin/site';
+import { useToast } from '@/components/admin/ToastProvider';
+import { ADMIN_TOASTS } from '@/lib/admin/toast';
 
 /**
  * Site settings form — Client Component.
@@ -17,6 +21,12 @@ import type { AdminSiteSettings } from '@/lib/data/admin/site';
  * It holds no field state of its own. `useActionState` carries the action
  * result (Indonesian messages, field errors) and `useFormStatus` drives the
  * pending state on the submit button.
+ *
+ * NOTIFICATIONS
+ * A successful save raises a toast from the shared dashboard queue, plus a
+ * warning toast when the hero photograph actually changed — replacing it leaves
+ * the previous Cloudinary asset behind by design, and the admin should be told.
+ * Validation and database failures stay inline beside the fields they concern.
  *
  * Prisma and credentials are never imported here — validation lives in the
  * server action, and the `required`/`type` attributes are usability aids only.
@@ -61,6 +71,96 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
+/**
+ * Deletes the site logo through its own action.
+ *
+ * Declared as its own component because `useFormStatus` reads the pending state
+ * of the nearest enclosing form — and this button deliberately sits OUTSIDE the
+ * settings `<form>`. Rendering it as a nested form would have made submitting it
+ * also submit every other settings field, which is exactly the coupling the
+ * separate action exists to avoid.
+ */
+function RemoveLogoButton({ disabled }: { disabled: boolean }) {
+  const [state, formAction, pending] = useActionState<SiteSettingsFormState, FormData>(
+    removeSiteLogo,
+    IDLE_STATE
+  );
+
+  const [confirmed, setConfirmed] = useState(false);
+  const { notify } = useToast();
+
+  /*
+   * Toast once per result. `removeSiteLogo` does not navigate, so the dashboard
+   * provider is still mounted and the notification is raised directly. The ref
+   * keeps a still-mounted result from re-firing on later renders.
+   */
+  const handledState = useRef<SiteSettingsFormState | null>(null);
+
+  useEffect(() => {
+    if (state.status !== 'success') return;
+    if (handledState.current === state) return;
+
+    handledState.current = state;
+    notify(ADMIN_TOASTS['logo-dihapus']);
+  }, [state, notify]);
+
+  return (
+    <div className="border-t border-[#E5E1DA] pt-4">
+      {/* Errors stay inline so they remain next to the control that caused
+          them; only the success case moves to the shared toast surface. */}
+      {state.status === 'error' && state.message && (
+        <p role="alert" className="mb-3 text-[10px] leading-relaxed text-[#A8452F]">
+          {state.message}
+        </p>
+      )}
+
+      {/*
+        Two-step: the first click arms the action and the second commits it.
+        Removing the logo is recoverable — the Cloudinary asset is left in place
+        and can be re-uploaded or re-linked — but it silently changes the brand
+        mark on every public page, so it should not be one stray click away.
+      */}
+      {confirmed ? (
+        <div className="flex items-center gap-3">
+          <button
+            type="submit"
+            formAction={formAction}
+            disabled={pending}
+            className="inline-flex items-center gap-2 border border-[#C4553D] px-4 py-2.5 text-[10px] uppercase tracking-[0.14em] text-[#C4553D] hover:bg-[#C4553D] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {pending ? (
+              <>
+                <Loader2 size={12} strokeWidth={1.5} className="animate-spin" aria-hidden="true" />
+                Menghapus...
+              </>
+            ) : (
+              'Ya, hapus logo'
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmed(false)}
+            disabled={pending}
+            className="text-[10px] uppercase tracking-[0.14em] text-[#999999] hover:text-[#1A1A1A] transition-colors disabled:opacity-50"
+          >
+            Batal
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirmed(true)}
+          disabled={disabled || pending}
+          className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.14em] text-[#999999] hover:text-[#C4553D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Trash2 size={11} strokeWidth={1.5} aria-hidden="true" />
+          Hapus logo dari situs
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="text-[10px] uppercase tracking-[0.18em] text-[#8B7355] font-medium border-b border-[#E5E1DA] pb-3 mb-4">
@@ -76,44 +176,52 @@ const LABEL_CLASS =
 const HINT_CLASS = 'mt-1.5 text-[10px] text-[#999999] font-light leading-relaxed';
 
 export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
-  const [state, formAction] = useActionState<SiteSettingsFormState, FormData>(
-    updateSiteSettings,
-    IDLE_STATE
-  );
+  const [state, formAction, pending] = useActionState<
+    SiteSettingsFormState,
+    FormData
+  >(updateSiteSettings, IDLE_STATE);
 
   const fieldErrors = state.fieldErrors ?? {};
+  const { notify } = useToast();
+
+  /*
+   * Toast once per result.
+   *
+   * Two toasts can come out of one save: the confirmation, and the warning the
+   * server attaches when the hero photograph really changed. The ref ties both to
+   * a single action result — `useActionState` keeps its state until the next
+   * submit, so a status check alone would re-fire on every render.
+   */
+  const handledState = useRef<SiteSettingsFormState | null>(null);
+
+  useEffect(() => {
+    if (state.status !== 'success') return;
+    if (handledState.current === state) return;
+
+    handledState.current = state;
+    notify(ADMIN_TOASTS['pengaturan-tersimpan']);
+
+    if (state.warning) {
+      notify({ tone: 'warning', message: state.warning });
+    }
+  }, [state, notify]);
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
-      {/* ─── Result banner ───────────────────────────────────────── */}
-      {state.message && (
+      {/* Errors only — a successful save is announced by the toast above, so
+          repeating it in a banner here would show the same outcome twice. */}
+      {state.status === 'error' && state.message && (
         <div
-          role="status"
-          aria-live="polite"
-          className={`flex items-start gap-2.5 border px-4 py-3 ${
-            state.status === 'success'
-              ? 'border-[#5C8A5C]/40 bg-[#5C8A5C]/5'
-              : 'border-[#C4553D]/40 bg-[#C4553D]/5'
-          }`}
+          role="alert"
+          aria-live="assertive"
+          className="flex items-start gap-2.5 border border-[#C4553D]/40 bg-[#C4553D]/5 px-4 py-3"
         >
-          {state.status === 'success' ? (
-            <CheckCircle2
-              size={15}
-              className="text-[#5C8A5C] mt-0.5 flex-shrink-0"
-              aria-hidden="true"
-            />
-          ) : (
-            <AlertCircle
-              size={15}
-              className="text-[#C4553D] mt-0.5 flex-shrink-0"
-              aria-hidden="true"
-            />
-          )}
-          <p
-            className={`text-xs leading-relaxed ${
-              state.status === 'success' ? 'text-[#41693F]' : 'text-[#C4553D]'
-            }`}
-          >
+          <AlertCircle
+            size={15}
+            className="text-[#C4553D] mt-0.5 flex-shrink-0"
+            aria-hidden="true"
+          />
+          <p className="text-xs text-[#A8452F] leading-relaxed">
             {state.message}
           </p>
         </div>
@@ -142,26 +250,25 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
             <FieldError message={fieldErrors.siteName} />
           </div>
 
-          <div>
-            <label htmlFor="logoUrl" className={LABEL_CLASS}>
-              URL Logo
-            </label>
-            <input
-              id="logoUrl"
-              name="logoUrl"
-              type="text"
-              maxLength={500}
-              defaultValue={settings.logoUrl ?? ''}
-              placeholder="https://… atau /placeholders/logo.png"
-              className={FIELD_CLASS}
-              aria-invalid={Boolean(fieldErrors.logoUrl)}
-            />
-            <FieldError message={fieldErrors.logoUrl} />
-            <p className={HINT_CLASS}>
-              Untuk sementara isi URL logo secara manual. Unggah berkas akan
-              tersedia pada tahap berikutnya.
-            </p>
-          </div>
+          <SiteImageUploader
+            fieldPrefix="logo"
+            inputId="logo-image-input"
+            label="Logo Website"
+            hint="Jika dikosongkan, situs menampilkan wordmark teks Studio Marmer."
+            previewAlt="Pratinjau logo website"
+            initialImageUrl={settings.logoUrl}
+            initialPublicId={settings.logoPublicId}
+            fieldError={fieldErrors.logoUrl ?? fieldErrors.logoPublicId}
+          />
+
+          {/* ─── Remove logo ───────────────────────────────────────── */}
+          {/*
+            A separate action rather than another submit of the main form, so
+            dropping the logo can never write the rest of a half-filled settings
+            row. Disabled while a save is in flight so the two writes cannot
+            interleave on the same row.
+          */}
+          <RemoveLogoButton disabled={pending} />
         </div>
       </section>
 
@@ -333,6 +440,22 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
             <p className={HINT_CLASS}>
               Jika dikosongkan, teks bawaan halaman utama yang ditampilkan.
             </p>
+          </div>
+
+          <div className="border-t border-[#E5E1DA] pt-4">
+            <SiteImageUploader
+              fieldPrefix="heroImage"
+              inputId="hero-image-input"
+              label="Gambar Hero Halaman Utama"
+              hint="Jika dikosongkan, foto bawaan yang sudah disertakan pada aplikasi tetap dipakai."
+              previewAlt="Pratinjau gambar hero halaman utama"
+              previewShape="wide"
+              initialImageUrl={settings.heroImageUrl}
+              initialPublicId={settings.heroImagePublicId}
+              fieldError={
+                fieldErrors.heroImageUrl ?? fieldErrors.heroImagePublicId
+              }
+            />
           </div>
         </div>
       </section>

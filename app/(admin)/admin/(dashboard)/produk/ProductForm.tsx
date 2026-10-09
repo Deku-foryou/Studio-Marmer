@@ -1,9 +1,9 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
-import { Plus, Trash2, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 
 import type { AdminCategoryRow, AdminProductDetail } from '@/lib/data/admin/products';
 import ProductImageUploader from './ProductImageUploader';
@@ -12,15 +12,22 @@ import {
   IDLE_STATE,
   type ProductFormState,
 } from '@/lib/validation/product-action-state';
+import { useToast } from '@/components/admin/ToastProvider';
+import { ADMIN_TOASTS } from '@/lib/admin/toast';
 
 /**
  * Product create/edit form — Client Component.
  *
- * Holds only UI state: repeatable specification and image rows, and the
- * action result used for Indonesian error/success messages.
+ * Holds only UI state: repeatable specification and image rows, and the action
+ * result used for Indonesian error messages and the success toast.
  *
  * It never imports Prisma or any credential. Validation lives in the server
  * actions; the `required`/`type` attributes here are usability aids only.
+ *
+ * SUCCESS VS ERROR
+ * A successful save raises a toast from the shared dashboard queue — one surface
+ * for create, update and delete alike. A failure stays inline, next to the fields
+ * it concerns.
  */
 
 interface ProductFormProps {
@@ -91,37 +98,56 @@ export function ProductForm({ categories, product }: ProductFormProps) {
 
   const fieldErrors = state.fieldErrors ?? {};
 
+  /**
+   * Raise a toast exactly once per action result.
+   *
+   * `useActionState` holds its result until the next submit, so an effect keyed
+   * only on `state.status === 'success'` would re-fire on every unrelated
+   * re-render for as long as the form stays mounted. Comparing against the exact
+   * state object last handled ties the toast to one result rather than to a
+   * status that merely persists.
+   *
+   * The tone comes from the catalogue, not from `state.message`: the message is
+   * the form's own copy, and the toast wording is chosen once in lib/admin/toast
+   * so it cannot drift from the notification the admin saw for the same action
+   * on another screen.
+   */
+  const { notify } = useToast();
+  const handledState = useRef<ProductFormState | null>(null);
+
+  useEffect(() => {
+    if (state.status !== 'success') return;
+    if (handledState.current === state) return;
+
+    handledState.current = state;
+    notify(
+      ADMIN_TOASTS[isEdit ? 'produk-diperbarui' : 'produk-ditambahkan']
+    );
+  }, [state, isEdit, notify]);
+
   return (
     <form action={formAction} className="space-y-6" noValidate>
-      {/* ─── Result banner ─────────────────────────────────────── */}
-      {state.message && (
+      {/*
+        ERRORS ONLY.
+        Success moved to the global toast so that create, update and delete all
+        report through one surface. Validation and database failures stay inline
+        because they are specific to this form — the field-level messages below
+        point at the offending input, and a floating toast cannot do that. The
+        banner itself is retained for the errors that have no single field
+        (authorisation, unknown category).
+      */}
+      {state.status === 'error' && state.message && (
         <div
-          role="status"
-          aria-live="polite"
-          className={`flex items-start gap-2.5 border px-4 py-3 ${
-            state.status === 'success'
-              ? 'border-[#5C8A5C]/40 bg-[#5C8A5C]/5'
-              : 'border-[#C4553D]/40 bg-[#C4553D]/5'
-          }`}
+          role="alert"
+          aria-live="assertive"
+          className="flex items-start gap-2.5 border border-[#C4553D]/40 bg-[#C4553D]/5 px-4 py-3"
         >
-          {state.status === 'success' ? (
-            <CheckCircle2
-              size={15}
-              className="text-[#5C8A5C] mt-0.5 flex-shrink-0"
-              aria-hidden="true"
-            />
-          ) : (
-            <AlertCircle
-              size={15}
-              className="text-[#C4553D] mt-0.5 flex-shrink-0"
-              aria-hidden="true"
-            />
-          )}
-          <p
-            className={`text-xs leading-relaxed ${
-              state.status === 'success' ? 'text-[#41693F]' : 'text-[#C4553D]'
-            }`}
-          >
+          <AlertCircle
+            size={15}
+            className="text-[#C4553D] mt-0.5 flex-shrink-0"
+            aria-hidden="true"
+          />
+          <p className="text-xs text-[#A8452F] leading-relaxed">
             {state.message}
           </p>
         </div>

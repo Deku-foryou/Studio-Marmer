@@ -12,6 +12,7 @@ import {
   updateCategory,
   type CategoryActionResult,
 } from './actions';
+import { buildFlashHref } from '@/lib/admin/toast';
 
 /**
  * Category create/edit form — Client Component.
@@ -20,9 +21,11 @@ import {
  * `defaultValue` and the browser collects the submission. No per-field state is
  * kept, so there is nothing to synchronise with the server action result.
  *
- * The action result (`CategoryActionResult`) drives the Indonesian success and
- * error messages plus the single field the server rejected, and
- * `useFormStatus` drives the pending state on the submit button.
+ * The action result (`CategoryActionResult`) drives the Indonesian error
+ * messages plus the single field the server rejected, and `useFormStatus` drives
+ * the pending state on the submit button. A successful save produces no inline
+ * banner: the form navigates to the list, carrying a `?toast=` key that the
+ * layout-level listener turns into the notification.
  *
  * Prisma is never imported here. Validation lives in the server action; the
  * `required`/`type` attributes below are usability aids only.
@@ -101,10 +104,26 @@ export default function CategoryForm({ mode, initialValues }: CategoryFormProps)
   useEffect(() => {
     if (state.success && !hasRedirected.current) {
       hasRedirected.current = true;
-      router.replace('/admin/kategori');
+      /*
+       * The success notification rides along in the URL rather than being pushed
+       * from here.
+       *
+       * This effect fires once and the form then navigates away, so a toast
+       * raised from this component would race the teardown — and on a hard
+       * navigation the whole client tree, including the toast provider, is
+       * replaced anyway. Putting the key in the target URL means the
+       * destination page's `ToastFlashListener` raises it after the provider is
+       * definitely mounted, whether the navigation is soft or full.
+       */
+      router.replace(
+        buildFlashHref(
+          '/admin/kategori',
+          isEdit ? 'kategori-diperbarui' : 'kategori-ditambahkan'
+        )
+      );
       router.refresh();
     }
-  }, [state, router]);
+  }, [state, router, isEdit]);
 
   const failedField = state.success ? undefined : state.field;
   const showErrorBanner = !state.success && state.error !== '';

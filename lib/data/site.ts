@@ -32,6 +32,7 @@ const FALLBACK: SiteSettingsDTO = {
   address: null,
   heroTitle: null,
   heroSubtitle: null,
+  heroImageUrl: null,
 };
 
 /**
@@ -53,6 +54,7 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
       address: true,
       heroTitle: true,
       heroSubtitle: true,
+      heroImageUrl: true,
     },
   });
 
@@ -69,5 +71,6 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
     address: row.address,
     heroTitle: row.heroTitle,
     heroSubtitle: row.heroSubtitle,
+    heroImageUrl: row.heroImageUrl,
   };
 }

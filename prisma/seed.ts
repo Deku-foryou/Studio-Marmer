@@ -39,7 +39,10 @@ const prisma = new PrismaClient();
  *
  * Everything except `siteName` is left null on purpose: those channels are the
  * client's to fill in, and the storefront hides any link it cannot resolve, so
- * an unconfigured value never renders as a broken or invented CTA.
+ * an unconfigured value never renders as a broken or invented CTA. The media
+ * columns stay null too, which is the safe default rather than a gap: no logo
+ * falls back to the text wordmark, and no hero image falls back to the bundled
+ * static photograph.
  *
  * `update: {}` means re-seeding never overwrites values an admin has edited.
  */
@@ -47,6 +50,7 @@ const SITE_SETTINGS = {
   id: 1,
   siteName: 'Studio Marmer',
   logoUrl: null,
+  logoPublicId: null,
   whatsappNumber: null,
   shopeeUrl: null,
   instagramUrl: null,
@@ -55,6 +59,8 @@ const SITE_SETTINGS = {
   address: null,
   heroTitle: null,
   heroSubtitle: null,
+  heroImageUrl: null,
+  heroImagePublicId: null,
 } as const;
 
 async function seedSiteSettings(): Promise<void> {

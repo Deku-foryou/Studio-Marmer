@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { MessageCircle, ShoppingBag, Camera, Music2, Mail, MapPin } from 'lucide-react';
 import { buildWhatsAppLink } from '@/lib/utils';
 import { BRAND } from '@/lib/brand';
+import SiteLogo from './SiteLogo';
 import type { SiteSettingsDTO } from '@/types/site';
 
 /**
@@ -51,13 +52,29 @@ export default function Footer({ settings }: FooterProps) {
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-14 sm:py-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-14">
           {/* ─── Brand ────────────────────────────────────────────── */}
+          {/* An uploaded logo replaces the wordmark. The footer inverts to
+              charcoal, so the logo needs a light plate behind it to stay legible
+              if the uploaded mark is dark-on-transparent — without one, a dark
+              logo would disappear into #171717. */}
           <div className="sm:col-span-2 lg:col-span-1">
-            <span className="block text-[16px] font-light tracking-[0.18em] uppercase text-[#F5F3F0] leading-tight">
-              {BRAND.nameTop}
-            </span>
-            <span className="block text-[16px] font-medium tracking-[0.18em] uppercase text-[#F5F3F0] leading-tight">
-              {BRAND.nameBottom}
-            </span>
+            {settings.logoUrl?.trim() ? (
+              <div className="inline-flex items-center bg-[#F5F3F0] px-3 py-2">
+                <SiteLogo
+                  logoUrl={settings.logoUrl}
+                  siteName={BRAND.name}
+                  className="h-9 w-auto object-contain"
+                />
+              </div>
+            ) : (
+              <>
+                <span className="block text-[16px] font-light tracking-[0.18em] uppercase text-[#F5F3F0] leading-tight">
+                  {BRAND.nameTop}
+                </span>
+                <span className="block text-[16px] font-medium tracking-[0.18em] uppercase text-[#F5F3F0] leading-tight">
+                  {BRAND.nameBottom}
+                </span>
+              </>
+            )}
             <p className="text-[12px] text-[#A3A09B] leading-relaxed mt-4 max-w-[260px]">
               {BRAND.description}
             </p>

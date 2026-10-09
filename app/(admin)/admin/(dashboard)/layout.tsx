@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import { auth } from '@/auth';
 import { isAdminRole } from '@/auth.config';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import { ToastProvider } from '@/components/admin/ToastProvider';
+import ToastFlashListener from '@/components/admin/ToastFlashListener';
 
 export const metadata: Metadata = {
   title: {
@@ -53,16 +56,40 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-[#F5F3F0]">
-      <AdminSidebar
-        userName={user.name ?? 'Admin'}
-        userRole={user.role}
-      />
+      {/*
+        TOASTS
+        `ToastProvider` wraps the whole dashboard so every screen shares one
+        queue and one notification surface. `ToastFlashListener` is what makes a
+        notification survive a server-action redirect — it reads the `?toast=`
+        key the action appended, raises it, and scrubs the param.
 
-      {/* `lg:pl-60` matches the rail width. `min-w-0` lets wide tables shrink
-          and scroll inside this column instead of pushing the page sideways. */}
-      <div className="lg:pl-60 min-w-0">
-        <div className="flex-1">{children}</div>
-      </div>
+        Mounted here rather than in the outer `admin/layout.tsx` because the
+        dashboard layout already gates on a valid session, so no notification
+        surface is ever mounted for the login screen.
+
+        The `Suspense` boundary is required, not decorative: `useSearchParams`
+        opts the tree up to it into client-side rendering, and without a boundary
+        a prerendered route fails the build with
+        "Missing Suspense boundary with useSearchParams". It is invisible in dev
+        where the route renders on demand, so the build is the thing that catches
+        its absence.
+      */}
+      <ToastProvider>
+        <Suspense fallback={null}>
+          <ToastFlashListener />
+        </Suspense>
+
+        <AdminSidebar
+          userName={user.name ?? 'Admin'}
+          userRole={user.role}
+        />
+
+        {/* `lg:pl-60` matches the rail width. `min-w-0` lets wide tables shrink
+            and scroll inside this column instead of pushing the page sideways. */}
+        <div className="lg:pl-60 min-w-0">
+          <div className="flex-1">{children}</div>
+        </div>
+      </ToastProvider>
     </div>
   );
 }

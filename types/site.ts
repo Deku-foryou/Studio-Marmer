@@ -7,6 +7,7 @@
  */
 export interface SiteSettingsDTO {
   siteName: string;
+  /** Cloudinary delivery URL, or a site-relative path. Null = render the wordmark. */
   logoUrl: string | null;
   /** Digits only, country code included, e.g. "6281234567890". */
   whatsappNumber: string | null;
@@ -17,4 +18,9 @@ export interface SiteSettingsDTO {
   address: string | null;
   heroTitle: string | null;
   heroSubtitle: string | null;
+  /**
+   * Hero photograph. Null = the bundled static asset renders instead, which is
+   * the pre-existing behaviour and the safe default.
+   */
+  heroImageUrl: string | null;
 }

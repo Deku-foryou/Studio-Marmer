@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import NavbarSearch, { NavbarSearchSkeleton } from './NavbarSearch';
+import SiteLogo from './SiteLogo';
 import { Search, X, Menu, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BRAND, NAV_LINKS } from '@/lib/brand';
@@ -57,14 +58,28 @@ export default function Navbar({ settings }: NavbarProps) {
     >
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
         <div className="flex items-center justify-between gap-4 lg:gap-8">
-          {/* ─── Wordmark ─────────────────────────────────────────── */}
+          {/* ─── Brand mark ───────────────────────────────────────── */}
+          {/*
+            The uploaded logo replaces the wordmark when one is set. The link,
+            its flex-shrink behaviour and the bar height are unchanged, so the
+            navbar layout is identical either way — only the mark inside swaps.
+          */}
           <Link href="/" className="flex-shrink-0 group leading-none">
-            <span className="block text-[15px] sm:text-[17px] font-light tracking-[0.18em] uppercase text-[#1A1A1A] select-none">
-              {BRAND.nameTop}
-            </span>
-            <span className="block text-[15px] sm:text-[17px] font-medium tracking-[0.18em] uppercase text-[#1A1A1A] select-none">
-              {BRAND.nameBottom}
-            </span>
+            {settings.logoUrl?.trim() ? (
+              <SiteLogo
+                logoUrl={settings.logoUrl}
+                siteName={BRAND.name}
+              />
+            ) : (
+              <>
+                <span className="block text-[15px] sm:text-[17px] font-light tracking-[0.18em] uppercase text-[#1A1A1A] select-none">
+                  {BRAND.nameTop}
+                </span>
+                <span className="block text-[15px] sm:text-[17px] font-medium tracking-[0.18em] uppercase text-[#1A1A1A] select-none">
+                  {BRAND.nameBottom}
+                </span>
+              </>
+            )}
           </Link>
 
           {/* ─── Desktop nav links ─────────────────────────────────── */}

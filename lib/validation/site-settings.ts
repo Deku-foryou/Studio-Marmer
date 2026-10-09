@@ -52,29 +52,57 @@ const optionalExternalUrl = (label: string, max = 500) =>
     .optional();
 
 /**
- * Optional logo reference.
+ * Optional media reference for an admin-managed image.
  *
- * Like product photos, a logo may either be an absolute http(s) URL or a
- * site-relative path (`/placeholders/logo.png`). Binary upload is a later
- * phase, so this stays a plain text field.
+ * Covers both the two shapes a real value can take: an absolute https URL
+ * returned by Cloudinary's unsigned upload, and a site-relative path (`/images/
+ * hero-…webp`) for a bundled asset or a row that predates Cloudinary hosting.
+ * http is tolerated only for the relative-path case being absent, so a value
+ * pasted from an old form still saves rather than failing the whole settings
+ * form.
  */
-const optionalLogoUrl = z
-  .string()
-  .trim()
-  .max(500, 'Maksimal 500 karakter.')
-  .transform((value) => (value.length === 0 ? undefined : value))
-  .refine(
-    (value) => {
+const optionalMediaUrl = (label: string) =>
+  z
+    .string()
+    .trim()
+    .max(500, 'Maksimal 500 karakter.')
+    .transform((value) => (value.length === 0 ? undefined : value))
+    .refine((value) => {
       if (value === undefined) return true;
       if (value.startsWith('/')) return true;
       try {
         const url = new URL(value);
-        return url.protocol === 'http:' || url.protocol === 'https:';
+        return url.protocol === 'https:' || url.protocol === 'http:';
       } catch {
         return false;
       }
-    },
-    { message: 'URL logo tidak valid. Gunakan tautan http(s) atau path yang diawali /.' }
+    })
+    .refine(
+      // A media URL is interpolated into a CSS `url()` and into an <Image src>,
+      // both of which reject a value carrying quote or paren characters. Banning
+      // them here means a crafted form post cannot break out of the declaration
+      // it was spliced into; no legitimate Cloudinary URL contains them.
+      (value) => value === undefined || !/["'()\s<>]/.test(value),
+      { message: `URL ${label} tidak valid.` }
+    )
+    .optional();
+
+/**
+ * Optional Cloudinary public id.
+ *
+ * The image is uploaded from the browser by an unsigned preset, so the public id
+ * arrives as a form field and is exactly as untrusted as any other input — it is
+ * shape-checked here rather than trusted. A single relative path segment, no
+ * scheme, no whitespace, bounded length.
+ */
+const optionalPublicId = z
+  .string()
+  .trim()
+  .max(255, 'Maksimal 255 karakter.')
+  .transform((value) => (value.length === 0 ? undefined : value))
+  .refine(
+    (val) => val === undefined || /^[A-Za-z0-9][A-Za-z0-9/_-]*$/.test(val),
+    'Public ID tidak valid.'
   )
   .optional();
 
@@ -117,7 +145,8 @@ export const siteSettingsSchema = z.object({
     .min(1, 'Nama studio wajib diisi.')
     .max(120, 'Nama studio maksimal 120 karakter.'),
 
-  logoUrl: optionalLogoUrl,
+  logoUrl: optionalMediaUrl('logo'),
+  logoPublicId: optionalPublicId,
 
   whatsappNumber: optionalWhatsAppNumber,
   email: optionalEmail,
@@ -129,6 +158,29 @@ export const siteSettingsSchema = z.object({
 
   heroTitle: optionalText(200, 'Judul hero maksimal 200 karakter.'),
   heroSubtitle: optionalText(500, 'Subtitle hero maksimal 500 karakter.'),
+  heroImageUrl: optionalMediaUrl('gambar hero'),
+  heroImagePublicId: optionalPublicId,
 });
 
 export type SiteSettingsInput = z.infer<typeof siteSettingsSchema>;
+
+/**
+ * Resolves an image column pair for persistence.
+ *
+ * `url` and `publicId` are written and cleared as a pair, matching
+ * `toCategoryImageColumns` in lib/validation/category.ts. A URL with no public
+ * id is still stored: the image renders perfectly well today, and the id is
+ * only needed if the asset has to be identified later. A public id with no URL
+ * would describe nothing renderable, so it is dropped instead.
+ */
+export function toSiteMediaColumns(input: {
+  url?: string;
+  publicId?: string;
+}): { url: string | null; publicId: string | null } {
+  const url = input.url ?? null;
+
+  return {
+    url,
+    publicId: url === null ? null : (input.publicId ?? null),
+  };
+}

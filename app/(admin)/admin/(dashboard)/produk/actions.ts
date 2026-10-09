@@ -18,6 +18,7 @@ import {
   updateProductSchema,
 } from '@/lib/validation/product';
 import type { ProductFormState } from '@/lib/validation/product-action-state';
+import { buildFlashHref } from '@/lib/admin/toast';
 
 /**
  * Product mutations for the admin area.
@@ -217,8 +218,16 @@ export async function createProduct(
     revalidatePath('/admin/produk');
     revalidatePath('/');
 
-    // Straight to the edit screen so the admin can review what was saved.
-    redirect(`/admin/produk/${created.id}/edit?created=1`);
+    /*
+     * Straight to the edit screen so the admin can review what was saved.
+     *
+     * `redirect()` throws, so this action never returns a state object and
+     * `useActionState` has nothing to render. The outcome therefore travels in
+     * the URL as a `?toast=` key, which ToastFlashListener picks up on the
+     * destination page. `created=1` used to sit here for an inline banner; the
+     * toast replaces it, so the flag is gone.
+     */
+    redirect(buildFlashHref(`/admin/produk/${created.id}/edit`, 'produk-ditambahkan'));
   } catch (error) {
     // Never surface a raw Prisma error to the browser.
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -423,24 +432,58 @@ export async function updateProduct(
 
 // ─── Delete ───────────────────────────────────────────────────────────────────
 
+/**
+ * Deletes a product and returns the admin to the list.
+ *
+ * STILL `Promise<void>`
+ * The return type is unchanged on purpose: `DeleteProductButton` calls this
+ * inside `startTransition` and discards the value, so there is no caller to
+ * widen a contract for. The outcome reaches the admin through the redirect's
+ * `?toast=` key instead, which works identically for this action whether it
+ * succeeds or fails.
+ *
+ * WHY THE TRY/CATCH
+ * Without one, a database failure here rejects the promise inside
+ * `startTransition`, and an unhandled rejection in a transition bubbles to the
+ * nearest error boundary — a full-page crash replacing the dashboard, for what
+ * is an ordinary recoverable failure. Catching it and redirecting back with an
+ * error toast keeps the admin on the list and tells them what happened.
+ *
+ * The `'digest' in error` guard is not optional: `redirect()` signals by
+ * throwing, so without it the success path would fall straight into the catch
+ * and every successful delete would report a failure.
+ */
 export async function deleteProduct(productId: number): Promise<void> {
   if (!(await requireAdminEditor())) {
     redirect('/admin/produk');
     return;
   }
 
-  const existing = await prisma.product.findUnique({
-    where: { id: productId },
-    select: { id: true },
-  });
+  try {
+    const existing = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
 
-  if (existing) {
-    // ProductImage rows are removed by the schema's ON DELETE CASCADE.
-    await prisma.product.delete({ where: { id: productId } });
+    if (existing) {
+      // ProductImage rows are removed by the schema's ON DELETE CASCADE.
+      await prisma.product.delete({ where: { id: productId } });
+    }
+
+    revalidatePath('/admin/produk');
+    revalidatePath('/');
+
+    redirect(buildFlashHref('/admin/produk', 'produk-dihapus'));
+  } catch (error) {
+    if (error instanceof Error && 'digest' in error) {
+      // Next.js redirect() throws internally - let it propagate.
+      throw error;
+    }
+
+    // Nothing is surfaced from the raw error: no Prisma code, message, SQL or
+    // stack ever reaches the browser. The admin gets a fixed sentence.
+    revalidatePath('/admin/produk');
+
+    redirect(buildFlashHref('/admin/produk', 'produk-gagal-dihapus'));
   }
-
-  revalidatePath('/admin/produk');
-  revalidatePath('/');
-
-  redirect('/admin/produk');
 }
