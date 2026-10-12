@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { hasUnsafeUrlCharacters, isAllowedMediaUrl } from '@/lib/validation/media-url';
 import { normalizeWhatsAppNumber } from '@/lib/utils';
 
 /**
@@ -68,21 +69,20 @@ const optionalMediaUrl = (label: string) =>
     .max(500, 'Maksimal 500 karakter.')
     .transform((value) => (value.length === 0 ? undefined : value))
     .refine((value) => {
-      if (value === undefined) return true;
-      if (value.startsWith('/')) return true;
-      try {
-        const url = new URL(value);
-        return url.protocol === 'https:' || url.protocol === 'http:';
-      } catch {
-        return false;
-      }
-    })
+      // Protocol policy is shared with category.ts and gallery.ts via
+      // isAllowedMediaUrl, so the three media validators cannot drift apart.
+      // The previous local `value.startsWith('/')` branch admitted a
+      // protocol-relative `//example.com/a.png`. That matters more here than
+      // anywhere else: this value is interpolated into a CSS `url()` in
+      // components/layout/HeroSection.tsx.
+      return value === undefined || isAllowedMediaUrl(value);
+    }, `URL ${label} tidak valid.`)
     .refine(
       // A media URL is interpolated into a CSS `url()` and into an <Image src>,
       // both of which reject a value carrying quote or paren characters. Banning
       // them here means a crafted form post cannot break out of the declaration
       // it was spliced into; no legitimate Cloudinary URL contains them.
-      (value) => value === undefined || !/["'()\s<>]/.test(value),
+      (value) => value === undefined || !hasUnsafeUrlCharacters(value),
       { message: `URL ${label} tidak valid.` }
     )
     .optional();

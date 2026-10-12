@@ -14,6 +14,7 @@ import {
   siteSettingsSchema,
   toSiteMediaColumns,
 } from '@/lib/validation/site-settings';
+import { productImageInputSchema } from '@/lib/validation/product';
 
 /**
  * Category, gallery and site-media URL validation.
@@ -136,53 +137,75 @@ describe('category required fields and optional defaults', () => {
   });
 });
 
-describe('URL policy divergence between validators (known gap)', () => {
+describe('every media validator shares one policy', () => {
   /*
-   * A single, explicit statement of where the admin media validators disagree.
-   * Category uses the shared helper; gallery and site-settings still use the
-   * older `startsWith('/')` branch. All three reject a bare `http://` and
-   * `javascript:`, but only category rejects a protocol-relative URL.
+   * The regression guard for this change. Category, gallery, product images and
+   * both site-settings media fields must agree on every URL, so a future edit to
+   * one validator cannot silently diverge from the rest.
    *
-   * This test is the one to delete when gallery.ts and site-settings.ts are
-   * migrated to `isAllowedMediaUrl`.
+   * Each entry is exercised through the real schema — this asserts validation
+   * behaviour, not the presence of an import or a string in the source.
    */
-  const protocolRelative = '//example.com/a.png';
+  const validators: Array<[string, (value: string) => boolean]> = [
+    [
+      'Category.imageUrl',
+      (v) => createCategorySchema.safeParse({ name: 'X', imageUrl: v }).success,
+    ],
+    [
+      'GalleryImage.imageUrl',
+      (v) => createGalleryItemSchema.safeParse({ title: 'T', imageUrl: v, isActive: true }).success,
+    ],
+    [
+      'ProductImage.imageUrl',
+      (v) =>
+        productImageInputSchema.safeParse({ imageUrl: v }).success,
+    ],
+    [
+      'SiteSettings.heroImageUrl',
+      (v) => siteSettingsSchema.safeParse({ siteName: 'S', heroImageUrl: v }).success,
+    ],
+    [
+      'SiteSettings.logoUrl',
+      (v) => siteSettingsSchema.safeParse({ siteName: 'S', logoUrl: v }).success,
+    ],
+  ];
 
-  it('category rejects a protocol-relative URL', () => {
-    expect(
-      createCategorySchema.safeParse({ name: 'X', imageUrl: protocolRelative }).success
-    ).toBe(false);
-  });
+  // The shared policy, stated once.
+  const SHARED_POLICY: Array<[string, boolean]> = [
+    ['https://res.cloudinary.com/demo/image/upload/v1/a.png', true],
+    ['http://example.com/a.png', true],
+    ['/images/hero.webp', true],
+    ['/images/nested/deep.webp', true],
+    ['//example.com/a.png', false],
+    ['//example.com', false],
+    ['http://', false],
+    ['https://', false],
+    ['javascript:alert(1)', false],
+    ['JavaScript:alert(1)', false],
+    ['data:image/png;base64,AAAA', false],
+    ['ftp://example.com/a.png', false],
+    ['file:///etc/passwd', false],
+    ['nonsense', false],
+    ['example.com/a.png', false],
+  ];
 
-  it('gallery currently accepts one (expected to change)', () => {
-    expect(
-      createGalleryItemSchema.safeParse({ title: 'T', imageUrl: protocolRelative, isActive: true })
-        .success
-    ).toBe(true);
-  });
+  for (const [label, expected] of SHARED_POLICY) {
+    it(`all media fields agree on: ${label}`, () => {
+      for (const [name, validate] of validators) {
+        expect(validate(label), `${name} disagreed on ${label}`).toBe(expected);
+      }
+    });
+  }
 
-  it('site settings currently accepts one (expected to change)', () => {
-    expect(
-      siteSettingsSchema.safeParse({ siteName: 'S', heroImageUrl: protocolRelative }).success
-    ).toBe(true);
-  });
-
-  it('all three agree on the cases that matter most', () => {
-    const bare = ['http://', 'https://', 'javascript:alert(1)', 'data:image/png;base64,AAAA'];
-    for (const value of bare) {
-      expect(
-        createCategorySchema.safeParse({ name: 'X', imageUrl: value }).success,
-        `category / ${value}`
-      ).toBe(false);
-      expect(
-        createGalleryItemSchema.safeParse({ title: 'T', imageUrl: value, isActive: true }).success,
-        `gallery / ${value}`
-      ).toBe(false);
-      expect(
-        siteSettingsSchema.safeParse({ siteName: 'S', heroImageUrl: value }).success,
-        `site settings / ${value}`
-      ).toBe(false);
-    }
+  it('covers all four validator locations', () => {
+    expect(validators).toHaveLength(5);
+    expect(validators.map(([name]) => name)).toEqual([
+      'Category.imageUrl',
+      'GalleryImage.imageUrl',
+      'ProductImage.imageUrl',
+      'SiteSettings.heroImageUrl',
+      'SiteSettings.logoUrl',
+    ]);
   });
 });
 
@@ -213,18 +236,11 @@ describe('toCategoryImageColumns', () => {
 
 describe('gallery media URL policy', () => {
   /*
-   * KNOWN GAP - gallery.ts and site-settings.ts have NOT been migrated to the
-   * shared `isAllowedMediaUrl` helper, so they still use the older
-   * `value.startsWith('/')` branch. That branch accepts a protocol-relative URL
-   * (`//example.com/a.png`), which the browser resolves against whatever scheme
-   * the page was served with - the exact weakness fixed for categories in
-   * Phase 3.
-   *
-   * These cases assert the CURRENT behaviour so the divergence is visible and
-   * cannot be mistaken for intended policy. They are expected to fail once
-   * gallery.ts is migrated to the shared helper - at which point the `expected`
-   * values below should flip to `false`. Nothing else in this file asserts a
-   * protocol-relative URL is acceptable for a category.
+   * Gallery now uses the shared `isAllowedMediaUrl` helper, so its policy is
+   * identical to category's. Previously it kept a local `startsWith('/')` branch
+   * that accepted a protocol-relative URL. This table is now the single source of
+   * truth for the media-URL policy, and every media validator is expected to
+   * agree with it.
    */
   const GALLERY_URL_CASES: Array<[string, string, boolean]> = [
     ['a valid https Cloudinary URL', 'https://res.cloudinary.com/demo/image/upload/v1/a.png', true],
@@ -233,9 +249,8 @@ describe('gallery media URL policy', () => {
     ['a bare http:// with no host', 'http://', false],
     ['a javascript: URL', 'javascript:alert(1)', false],
     ['a data: URL', 'data:image/png;base64,AAAA', false],
-    // Currently ACCEPTED — divergence from the category policy, see note above.
-    ['a protocol-relative URL', '//example.com/a.png', true],
-    ['a protocol-relative bare host', '//example.com', true],
+    ['a protocol-relative URL', '//example.com/a.png', false],
+    ['a protocol-relative bare host', '//example.com', false],
   ];
 
   it('requires a non-empty imageUrl', () => {
@@ -275,9 +290,9 @@ describe('gallery media URL policy', () => {
     ).toBe(false);
   });
 
-  it('applies the same rules on update', () => {
+  it('rejects a protocol-relative URL', () => {
     expect(
-      updateGalleryItemSchema.safeParse({ title: 'Foto', imageUrl: 'https://example.com/a".png', isActive: true })
+      updateGalleryItemSchema.safeParse({ title: 'Foto', imageUrl: '//evil.test/a.png', isActive: true })
         .success
     ).toBe(false);
     expect(
@@ -296,12 +311,10 @@ describe('gallery media URL policy', () => {
 
 describe('site settings media URL policy', () => {
   /*
-   * `siteName` is required by the schema, so every case supplies it.
-   *
-   * SAME KNOWN GAP as gallery above: site-settings.ts keeps the older
-   * `startsWith('/')` branch and therefore still accepts a protocol-relative
-   * URL. The hero image is rendered into a CSS `url()`, so this is the more
-   * consequential of the two.
+   * Site settings now uses the shared helper too. `siteName` is required by the
+   * schema, so every case supplies it. The hero image is interpolated into a CSS
+   * `url()` in components/layout/HeroSection.tsx, so both the protocol
+   * allow-list and the character guard apply here.
    */
   const base = { siteName: 'Studio Marmer' };
 
@@ -339,12 +352,38 @@ describe('site settings media URL policy', () => {
     ).toBe(false);
   });
 
-  it('currently ACCEPTS a protocol-relative URL (divergence from category policy)', () => {
-    // Encodes present behaviour so the gap is explicit. Flip to false once
-    // site-settings.ts adopts the shared helper.
+  it('rejects a protocol-relative URL', () => {
+    // The hero image is rendered into a CSS url(), so a value the browser would
+    // resolve against the page scheme must never reach this field.
     expect(
       siteSettingsSchema.safeParse({ ...base, heroImageUrl: '//evil.test/a.png' }).success
+    ).toBe(false);
+    expect(
+      siteSettingsSchema.safeParse({ ...base, heroImageUrl: '//evil.test' }).success
+    ).toBe(false);
+  });
+
+  it('applies the same policy to logoUrl', () => {
+    expect(
+      siteSettingsSchema.safeParse({
+        ...base,
+        logoUrl: 'https://res.cloudinary.com/demo/image/upload/v1/logo.png',
+      }).success
     ).toBe(true);
+    expect(siteSettingsSchema.safeParse({ ...base, logoUrl: '/images/logo.webp' }).success).toBe(true);
+    expect(siteSettingsSchema.safeParse({ ...base, logoUrl: '//evil.test/logo.png' }).success).toBe(
+      false
+    );
+    expect(siteSettingsSchema.safeParse({ ...base, logoUrl: 'javascript:alert(1)' }).success).toBe(
+      false
+    );
+    expect(siteSettingsSchema.safeParse({ ...base, logoUrl: 'http://' }).success).toBe(false);
+  });
+
+  it('treats a blank media URL as absent', () => {
+    const result = siteSettingsSchema.safeParse({ ...base, heroImageUrl: '   ' });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.heroImageUrl).toBeUndefined();
   });
 
   it('maps absent media columns to null', () => {

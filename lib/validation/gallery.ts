@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { hasUnsafeUrlCharacters, isAllowedMediaUrl } from '@/lib/validation/media-url';
+
 /**
  * Server-side validation for a gallery photograph.
  *
@@ -26,27 +28,22 @@ const optionalText = (max: number, message: string) =>
  * A gallery tile with no picture would render broken, so this is the one field
  * with no "blank is fine" path. Both an absolute https URL from Cloudinary and a
  * site-relative path (for a bundled asset, or a row that predates Cloudinary
- * hosting) are accepted, matching `optionalMediaUrl` in lib/validation/
- * site-settings.ts.
+ * hosting) are accepted.
+ *
+ * Protocol policy comes from the shared `isAllowedMediaUrl` helper, so gallery,
+ * category and site settings cannot drift apart — see
+ * lib/validation/media-url.ts for the full contract. The previous local
+ * `value.startsWith('/')` branch also admitted a protocol-relative
+ * `//example.com/a.png`, which the browser resolves against whatever scheme the
+ * page was served with.
  */
 const requiredMediaUrl = z
   .string()
   .trim()
   .min(1, 'Foto galeri wajib diunggah.')
   .max(500, 'Maksimal 500 karakter.')
-  .refine(
-    (value) => {
-      if (value.startsWith('/')) return true;
-      try {
-        const url = new URL(value);
-        return url.protocol === 'https:' || url.protocol === 'http:';
-      } catch {
-        return false;
-      }
-    },
-    { message: 'URL foto tidak valid.' }
-  )
-  .refine((value) => !/["'()\s<>]/.test(value), {
+  .refine(isAllowedMediaUrl, { message: 'URL foto tidak valid.' })
+  .refine((value) => !hasUnsafeUrlCharacters(value), {
     message: 'URL foto tidak valid.',
   });
 

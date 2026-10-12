@@ -5,6 +5,7 @@ import {
   MAX_PRODUCT_ROWS,
   SPECIFICATIONS_LIMIT_MESSAGE,
 } from './product-rows';
+import { isAllowedMediaUrl } from './media-url';
 
 /**
  * Server-side validation for product create/update.
@@ -55,15 +56,9 @@ const imageUrlSchema = z
   .string()
   .trim()
   .min(1, 'URL foto wajib diisi.')
-  .refine((value) => {
-    if (value.startsWith('/')) return true;
-    try {
-      const url = new URL(value);
-      return url.protocol === 'http:' || url.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  }, 'URL foto tidak valid. Gunakan tautan http(s) atau path yang diawali /.');
+  .refine(isAllowedMediaUrl, {
+    message: 'URL foto tidak valid. Gunakan tautan http(s) atau path yang diawali /.',
+  });
 
 /**
  * Cloudinary public id. Optional, but when present it must look like a public id

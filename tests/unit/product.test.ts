@@ -85,6 +85,15 @@ describe('createProductSchema — valid data', () => {
     );
     expect(result.success).toBe(true);
   });
+
+  it('rejects a protocol-relative image URL', () => {
+    // imageUrlSchema previously had a local `startsWith('/')` branch that let
+    // this through; it now shares isAllowedMediaUrl with every other media
+    // validator. Covered here as well as in the cross-validator block.
+    expect(
+      createProductSchema.safeParse(product({ images: [{ imageUrl: '//evil.test/a.png' }] })).success
+    ).toBe(false);
+  });
 });
 
 describe('createProductSchema — required fields', () => {
@@ -377,6 +386,30 @@ describe('productImageInputSchema', () => {
         imageUrl: 'https://res.cloudinary.com/demo/image/upload/v1/a.png',
       }).success
     ).toBe(true);
+  });
+
+  it('accepts an http URL and a root-relative path', () => {
+    expect(productImageInputSchema.safeParse({ imageUrl: 'http://example.com/a.png' }).success).toBe(
+      true
+    );
+    expect(productImageInputSchema.safeParse({ imageUrl: '/images/a.webp' }).success).toBe(true);
+  });
+
+  it('rejects a protocol-relative URL', () => {
+    expect(
+      productImageInputSchema.safeParse({ imageUrl: '//evil.test/a.png' }).success
+    ).toBe(false);
+    expect(productImageInputSchema.safeParse({ imageUrl: '//evil.test' }).success).toBe(false);
+  });
+
+  it('keeps the original Indonesian error message for a bad URL', () => {
+    const result = productImageInputSchema.safeParse({ imageUrl: 'javascript:alert(1)' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        'URL foto tidak valid. Gunakan tautan http(s) atau path yang diawali /.'
+      );
+    }
   });
 
   it('rejects a malformed publicId', () => {

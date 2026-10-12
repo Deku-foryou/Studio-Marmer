@@ -67,16 +67,20 @@ can be tested directly — a refactor for a later phase, not something to fake h
   Client Components; testing them needs jsdom or a browser environment. The
   browser harness (`test-row-cap-browser.mts`) covers them for now.
 
-## A known divergence, asserted on purpose
+## One media-URL policy, enforced everywhere
 
-`gallery.ts` and `site-settings.ts` have **not** been migrated to the shared
-`isAllowedMediaUrl` helper. They still use `value.startsWith('/')`, which accepts
-a protocol-relative URL such as `//example.com/a.png`.
+Every admin media field — `Category.imageUrl`, `GalleryImage.imageUrl`,
+`ProductImage.imageUrl`, `SiteSettings.heroImageUrl`, `SiteSettings.logoUrl` —
+validates through the shared `isAllowedMediaUrl` helper in
+`lib/validation/media-url.ts`.
 
-`category.test.ts` asserts that current behaviour explicitly and labels it as a
-gap. Those specific expectations are expected to flip to `false` once both files
-adopt the shared helper — at which point the
-`URL policy divergence between validators` block can be deleted.
+This was not always true. `gallery.ts`, `site-settings.ts` and `product.ts` each
+carried their own `value.startsWith('/')` branch, which accepted a
+protocol-relative URL such as `//example.com/a.png`. Only `category.ts` had been
+migrated. All three now share one helper, and the
+`every media validator shares one policy` block in `category.test.ts` asserts
+that all five fields return the same verdict for the same input — so a future
+edit to one validator cannot silently diverge from the rest.
 
-This is recorded rather than fixed here because changing which URLs the admin
-form accepts is an application behaviour change, not a testing change.
+Before tightening the policy, a read-only audit confirmed no stored row used a
+protocol-relative value, so nothing became unsaveable on its next edit.
