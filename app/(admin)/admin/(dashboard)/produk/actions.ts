@@ -24,6 +24,7 @@ import {
   MAX_PRODUCT_ROWS,
   overflowFieldErrors,
 } from '@/lib/validation/product-rows';
+import { cleanupUnreferencedAssets } from '@/lib/media-lifecycle';
 import type { ProductFormState } from '@/lib/validation/product-action-state';
 import { buildFlashHref } from '@/lib/admin/toast';
 
@@ -491,6 +492,38 @@ export async function updateProduct(
       }
 
       await Promise.all(operations);
+
+      /*
+       * CLOUDINARY CLEANUP — AFTER THE TRANSACTION COMMITTED
+       *
+       * The database is now the source of truth: any `public_id` that was on a
+       * row before but is no longer on any row afterwards is unreferenced and
+       * safe to delete remotely. Doing this inside the transaction would risk
+       * deleting an asset the transaction then fails to commit, leaving the
+       * storefront pointing at a file that no longer exists.
+       *
+       * A row that was UPDATED IN PLACE with a new photo also orphans its old
+       * public id, so this set is computed from the before/after difference
+       * rather than from `removedIds` alone — a replacement is not a removal,
+       * but it leaves the same kind of orphan.
+       */
+      const orphanedPublicIds = existing
+        .filter((row) => row.publicId)
+        .map((row) => row.publicId as string)
+        .filter((publicId) => {
+          const stillUsed = keep.some((image) => image.publicId === publicId);
+          return !stillUsed;
+        });
+
+      if (orphanedPublicIds.length > 0) {
+        const cleanup = await cleanupUnreferencedAssets(orphanedPublicIds);
+        if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+          console.warn(
+            `[media-lifecycle] product ${productId} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
+            cleanup.failed
+          );
+        }
+      }
     });
 
     revalidatePath('/admin/produk');
@@ -537,6 +570,13 @@ export async function updateProduct(
  * The `'digest' in error` guard is not optional: `redirect()` signals by
  * throwing, so without it the success path would fall straight into the catch
  * and every successful delete would report a failure.
+ *
+ * CLOUDINARY ASSETS
+ * The image rows are removed by ON DELETE CASCADE, so their `public_id` values
+ * must be read BEFORE the product is deleted — afterwards they are simply gone
+ * and the remote assets would be orphaned with no way to name them. The actual
+ * Cloudinary deletion happens after the database commit succeeds; see
+ * lib/media-lifecycle.ts for why that order matters.
  */
 export async function deleteProduct(productId: number): Promise<void> {
   if (!(await requireAdminEditor())) {
@@ -551,8 +591,35 @@ export async function deleteProduct(productId: number): Promise<void> {
     });
 
     if (existing) {
+      // Read the public ids before deleting: CASCADE removes the rows in the
+      // same statement, so this is the only moment they are still queryable.
+      const imagesBefore = await prisma.productImage.findMany({
+        where: { productId },
+        select: { publicId: true },
+      });
+      const publicIds = imagesBefore
+        .map((image) => image.publicId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
       // ProductImage rows are removed by the schema's ON DELETE CASCADE.
       await prisma.product.delete({ where: { id: productId } });
+
+      // Now that the database no longer references these assets, ask the
+      // lifecycle helper to delete them from Cloudinary. It re-checks
+      // references before any network call, so an asset still used elsewhere
+      // is kept.
+      if (publicIds.length > 0) {
+        const cleanup = await cleanupUnreferencedAssets(publicIds);
+        if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+          // Server-side warning only. The database change succeeded, so the
+          // admin must not see a failure — but the assets that could not be
+          // deleted stay named here for a follow-up pass.
+          console.warn(
+            `[media-lifecycle] product ${productId} deleted, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
+            cleanup.failed
+          );
+        }
+      }
     }
 
     revalidatePath('/admin/produk');

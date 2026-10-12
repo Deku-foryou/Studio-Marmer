@@ -10,6 +10,7 @@ import {
 import { resolveUniqueCategorySlug } from '@/lib/data/admin/categories'
 import { auth } from '@/auth'
 import { isAdminRole } from '@/auth.config'
+import { cleanupUnreferencedAssets } from '@/lib/media-lifecycle'
 
 /** Shared error sentinel returned by every mutation. */
 type ErrorResult = { success: false; error: string; field?: string }
@@ -178,11 +179,13 @@ export async function updateCategory(
   // The existence check is a read, so it is wrapped too: a rejected read would
   // otherwise propagate out of the action, which React turns into an error
   // boundary and a blank form rather than a recoverable message.
-  let existing: { slug: string } | null
+  let existing: { slug: string; publicId: string | null } | null
   try {
+    // `publicId` is read here so the action can tell a replacement from a
+    // metadata-only edit, and clean up the orphaned asset after committing.
     existing = await prisma.category.findUnique({
       where: { id },
-      select: { slug: true },
+      select: { slug: true, publicId: true },
     })
   } catch {
     return { success: false, error: 'Gagal mengupdate kategori. Silakan coba lagi.' }
@@ -200,10 +203,13 @@ export async function updateCategory(
   // submitting blanks. So this writes the pair as given rather than special
   // casing "unchanged".
   //
-  // Replacing an image leaves the previous Cloudinary asset in place. Deleting
-  // remote media needs a trusted server-side context that this codebase does not
-  // have yet, and losing a photo the admin may still want is far worse than
-  // leaving an unreferenced asset for later cleanup.
+  // CLOUDINARY CLEANUP
+  // When the image is replaced or removed, the previous asset is orphaned.
+  // The database write commits first; only then is the old public id offered to
+  // the lifecycle helper, which re-checks references before deleting. A
+  // metadata-only edit submits the same public id, so nothing is cleaned.
+  const previousPublicId = existing.publicId ?? null;
+
   try {
     const updated = await prisma.category.update({
       where: { id },
@@ -217,7 +223,18 @@ export async function updateCategory(
         // the first name and deliberately left untouched on every update.
       },
       select: { id: true, name: true },
-    })
+    });
+
+    // Clean up the old asset only after the commit succeeded.
+    if (previousPublicId && previousPublicId !== data.publicId) {
+      const cleanup = await cleanupUnreferencedAssets([previousPublicId]);
+      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+        console.warn(
+          `[media-lifecycle] category ${id} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
+          cleanup.failed
+        );
+      }
+    }
 
     revalidateCategoryViews()
 
@@ -265,10 +282,35 @@ export async function deleteCategory(id: number): Promise<CategoryActionResult> 
   }
 
   // ---- no products, safe to delete -------------------------------------------
+  //
+  // The category's own Cloudinary asset is collected first: the delete removes
+  // the row, and with it the only record of which public id to clean up.
+  let categoryPublicId: string | null = null;
+  try {
+    const row = await prisma.category.findUnique({
+      where: { id },
+      select: { publicId: true },
+    });
+    categoryPublicId = row?.publicId ?? null;
+  } catch {
+    return { success: false, error: 'Gagal menghapus kategori. Silakan coba lagi.' };
+  }
+
   try {
     await prisma.category.delete({
       where: { id },
     })
+
+    // Clean up the orphaned asset only after the commit succeeded.
+    if (categoryPublicId) {
+      const cleanup = await cleanupUnreferencedAssets([categoryPublicId]);
+      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+        console.warn(
+          `[media-lifecycle] category ${id} deleted, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
+          cleanup.failed
+        );
+      }
+    }
 
     revalidateCategoryViews()
 

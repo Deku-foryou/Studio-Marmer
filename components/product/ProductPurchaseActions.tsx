@@ -99,7 +99,7 @@ export default function ProductPurchaseActions({
 
       {shopeeUrl && (
         <p className="text-[10px] text-[#999999] leading-relaxed text-center pt-1">
-          Pembelian diproses melalui Shopee. Untuk menanyakan ketersediaan,
+          Pembelian diproses melalui Shopee. Untuk Pertanyaan lebih lanjut,
           hubungi kami lewat WhatsApp.
         </p>
       )}

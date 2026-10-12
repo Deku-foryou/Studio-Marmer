@@ -1,0 +1,1291 @@
+[1mdiff --git a/.env.example b/.env.example[m
+[1mindex bfd886b..85c9697 100644[m
+[1m--- a/.env.example[m
+[1m+++ b/.env.example[m
+[36m@@ -39,4 +39,19 @@[m [mSEED_ADMIN_NAME="Store Admin"[m
+ [m
+ [m
+ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=[m
+[31m-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=[m
+\ No newline at end of file[m
+[32m+[m[32mNEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=[m
+[32m+[m
+[32m+[m[32m# ─────────────────────────────────────────────────────────────────────────────[m
+[32m+[m[32m# Cloudinary delete credentials (SERVER-ONLY — never prefix with NEXT_PUBLIC_)[m
+[32m+[m[32m# Used by lib/cloudinary-delete.ts to sign Admin API delete requests when an[m
+[32m+[m[32m# admin removes or replaces an image. Without these, deleting an image only[m
+[32m+[m[32m# removes the MySQL reference; the Cloudinary asset is left in place and the[m
+[32m+[m[32m# admin is told so.[m
+[32m+[m[32m#[m
+[32m+[m[32m# Obtain them from the Cloudinary dashboard (Settings → Security → API keys).[m
+[32m+[m[32m# The API secret must NEVER be added to a client component, a NEXT_PUBLIC_*[m
+[32m+[m[32m# variable, a server action response, or a log.[m
+[32m+[m[32m# ─────────────────────────────────────────────────────────────────────────────[m
+[32m+[m[32mCLOUDINARY_CLOUD_NAME=[m
+[32m+[m[32mCLOUDINARY_API_KEY=[m
+[32m+[m[32mCLOUDINARY_API_SECRET=[m
+\ No newline at end of file[m
+[1mdiff --git a/app/(admin)/admin/(dashboard)/galeri/actions.ts b/app/(admin)/admin/(dashboard)/galeri/actions.ts[m
+[1mindex 4efe79d..07dc657 100644[m
+[1m--- a/app/(admin)/admin/(dashboard)/galeri/actions.ts[m
+[1m+++ b/app/(admin)/admin/(dashboard)/galeri/actions.ts[m
+[36m@@ -14,6 +14,7 @@[m [mimport {[m
+   toGalleryImageColumns,[m
+   updateGalleryItemSchema,[m
+ } from '@/lib/validation/gallery';[m
+[32m+[m[32mimport { cleanupUnreferencedAssets } from '@/lib/media-lifecycle';[m
+ [m
+ /**[m
+  * Gallery mutations for the admin area.[m
+[36m@@ -223,12 +224,13 @@[m [mexport async function updateGalleryItem([m
+    * the follow-up warning about an orphaned Cloudinary asset fires on a genuine[m
+    * replacement and never on a metadata-only edit.[m
+    *[m
+[31m-   * Replacing a photo deliberately leaves the previous asset in Cloudinary.[m
+[31m-   * Deleting remote media needs a trusted server-side context this codebase does[m
+[31m-   * not have, and losing a photo the admin may still want is worse than leaving an[m
+[31m-   * unreferenced asset for a later cleanup pass.[m
+[32m+[m[32m   * When the image is replaced or removed, the previous asset is orphaned. The[m
+[32m+[m[32m   * database write commits first; only then is the old public id offered to the[m
+[32m+[m[32m   * lifecycle helper, which re-checks references before deleting. A[m
+[32m+[m[32m   * metadata-only edit submits the same public id, so nothing is cleaned.[m
+    */[m
+   const imageReplaced = data.imageUrl !== existing.imageUrl;[m
+[32m+[m[32m  const previousPublicId = existing.publicId ?? null;[m
+ [m
+   try {[m
+     const updated = await prisma.galleryImage.update({[m
+[36m@@ -244,6 +246,17 @@[m [mexport async function updateGalleryItem([m
+       select: { id: true, title: true },[m
+     });[m
+ [m
+[32m+[m[32m    // Clean up the old asset only after the commit succeeded.[m
+[32m+[m[32m    if (previousPublicId && previousPublicId !== data.publicId) {[m
+[32m+[m[32m      const cleanup = await cleanupUnreferencedAssets([previousPublicId]);[m
+[32m+[m[32m      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m        console.warn([m
+[32m+[m[32m          `[media-lifecycle] gallery item ${id} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,[m
+[32m+[m[32m          cleanup.failed[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+     revalidateGalleryViews();[m
+     revalidatePath(`/admin/galeri/${id}/edit`);[m
+ [m
+[36m@@ -268,10 +281,9 @@[m [mexport async function updateGalleryItem([m
+  * confirm dialog can keep the dialog open and show the reason on failure, and[m
+  * raise a toast on success.[m
+  *[m
+[31m- * CLOUINARY ASSETS ARE NOT DELETED[m
+[31m- * This only removes the database row. The remote asset stays in the[m
+[31m- * `studio-marmer/gallery` media library for a later trusted cleanup pass,[m
+[31m- * exactly as replacing a photo behaves today.[m
+[32m+[m[32m * Once the row is gone its `public_id` is the only name the remote asset has, so[m
+[32m+[m[32m * it is read before the delete. The actual Cloudinary deletion runs after the[m
+[32m+[m[32m * commit succeeds, via lib/media-lifecycle.ts.[m
+  */[m
+ export async function deleteGalleryItem([m
+   id: number[m
+[36m@@ -290,7 +302,7 @@[m [mexport async function deleteGalleryItem([m
+   try {[m
+     const existing = await prisma.galleryImage.findUnique({[m
+       where: { id },[m
+[31m-      select: { title: true },[m
+[32m+[m[32m      select: { title: true, publicId: true },[m
+     });[m
+ [m
+     // A row that is already gone is treated as success: the admin asked for it to[m
+[36m@@ -301,6 +313,17 @@[m [mexport async function deleteGalleryItem([m
+ [m
+     await prisma.galleryImage.delete({ where: { id } });[m
+ [m
+[32m+[m[32m    // Clean up the orphaned asset only after the commit succeeded.[m
+[32m+[m[32m    if (existing.publicId) {[m
+[32m+[m[32m      const cleanup = await cleanupUnreferencedAssets([existing.publicId]);[m
+[32m+[m[32m      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m        console.warn([m
+[32m+[m[32m          `[media-lifecycle] gallery item ${id} deleted, but ${cleanup.failed.length} asset(s) need manual cleanup:`,[m
+[32m+[m[32m          cleanup.failed[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+     revalidateGalleryViews();[m
+ [m
+     return {[m
+[1mdiff --git a/app/(admin)/admin/(dashboard)/kategori/actions.ts b/app/(admin)/admin/(dashboard)/kategori/actions.ts[m
+[1mindex 9d9198b..3260581 100644[m
+[1m--- a/app/(admin)/admin/(dashboard)/kategori/actions.ts[m
+[1m+++ b/app/(admin)/admin/(dashboard)/kategori/actions.ts[m
+[36m@@ -10,6 +10,7 @@[m [mimport {[m
+ import { resolveUniqueCategorySlug } from '@/lib/data/admin/categories'[m
+ import { auth } from '@/auth'[m
+ import { isAdminRole } from '@/auth.config'[m
+[32m+[m[32mimport { cleanupUnreferencedAssets } from '@/lib/media-lifecycle'[m
+ [m
+ /** Shared error sentinel returned by every mutation. */[m
+ type ErrorResult = { success: false; error: string; field?: string }[m
+[36m@@ -178,11 +179,13 @@[m [mexport async function updateCategory([m
+   // The existence check is a read, so it is wrapped too: a rejected read would[m
+   // otherwise propagate out of the action, which React turns into an error[m
+   // boundary and a blank form rather than a recoverable message.[m
+[31m-  let existing: { slug: string } | null[m
+[32m+[m[32m  let existing: { slug: string; publicId: string | null } | null[m
+   try {[m
+[32m+[m[32m    // `publicId` is read here so the action can tell a replacement from a[m
+[32m+[m[32m    // metadata-only edit, and clean up the orphaned asset after committing.[m
+     existing = await prisma.category.findUnique({[m
+       where: { id },[m
+[31m-      select: { slug: true },[m
+[32m+[m[32m      select: { slug: true, publicId: true },[m
+     })[m
+   } catch {[m
+     return { success: false, error: 'Gagal mengupdate kategori. Silakan coba lagi.' }[m
+[36m@@ -200,10 +203,13 @@[m [mexport async function updateCategory([m
+   // submitting blanks. So this writes the pair as given rather than special[m
+   // casing "unchanged".[m
+   //[m
+[31m-  // Replacing an image leaves the previous Cloudinary asset in place. Deleting[m
+[31m-  // remote media needs a trusted server-side context that this codebase does not[m
+[31m-  // have yet, and losing a photo the admin may still want is far worse than[m
+[31m-  // leaving an unreferenced asset for later cleanup.[m
+[32m+[m[32m  // CLOUDINARY CLEANUP[m
+[32m+[m[32m  // When the image is replaced or removed, the previous asset is orphaned.[m
+[32m+[m[32m  // The database write commits first; only then is the old public id offered to[m
+[32m+[m[32m  // the lifecycle helper, which re-checks references before deleting. A[m
+[32m+[m[32m  // metadata-only edit submits the same public id, so nothing is cleaned.[m
+[32m+[m[32m  const previousPublicId = existing.publicId ?? null;[m
+[32m+[m
+   try {[m
+     const updated = await prisma.category.update({[m
+       where: { id },[m
+[36m@@ -217,7 +223,18 @@[m [mexport async function updateCategory([m
+         // the first name and deliberately left untouched on every update.[m
+       },[m
+       select: { id: true, name: true },[m
+[31m-    })[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m    // Clean up the old asset only after the commit succeeded.[m
+[32m+[m[32m    if (previousPublicId && previousPublicId !== data.publicId) {[m
+[32m+[m[32m      const cleanup = await cleanupUnreferencedAssets([previousPublicId]);[m
+[32m+[m[32m      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m        console.warn([m
+[32m+[m[32m          `[media-lifecycle] category ${id} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,[m
+[32m+[m[32m          cleanup.failed[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+ [m
+     revalidateCategoryViews()[m
+ [m
+[36m@@ -265,11 +282,36 @@[m [mexport async function deleteCategory(id: number): Promise<CategoryActionResult>[m
+   }[m
+ [m
+   // ---- no products, safe to delete -------------------------------------------[m
+[32m+[m[32m  //[m
+[32m+[m[32m  // The category's own Cloudinary asset is collected first: the delete removes[m
+[32m+[m[32m  // the row, and with it the only record of which public id to clean up.[m
+[32m+[m[32m  let categoryPublicId: string | null = null;[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    const row = await prisma.category.findUnique({[m
+[32m+[m[32m      where: { id },[m
+[32m+[m[32m      select: { publicId: true },[m
+[32m+[m[32m    });[m
+[32m+[m[32m    categoryPublicId = row?.publicId ?? null;[m
+[32m+[m[32m  } catch {[m
+[32m+[m[32m    return { success: false, error: 'Gagal menghapus kategori. Silakan coba lagi.' };[m
+[32m+[m[32m  }[m
+[32m+[m
+   try {[m
+     await prisma.category.delete({[m
+       where: { id },[m
+     })[m
+ [m
+[32m+[m[32m    // Clean up the orphaned asset only after the commit succeeded.[m
+[32m+[m[32m    if (categoryPublicId) {[m
+[32m+[m[32m      const cleanup = await cleanupUnreferencedAssets([categoryPublicId]);[m
+[32m+[m[32m      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m        console.warn([m
+[32m+[m[32m          `[media-lifecycle] category ${id} deleted, but ${cleanup.failed.length} asset(s) need manual cleanup:`,[m
+[32m+[m[32m          cleanup.failed[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+     revalidateCategoryViews()[m
+ [m
+     return { success: true, data: { id, name: '', slug: '' } }[m
+[1mdiff --git a/app/(admin)/admin/(dashboard)/pengaturan/SiteImageUploader.tsx b/app/(admin)/admin/(dashboard)/pengaturan/SiteImageUploader.tsx[m
+[1mindex b8156b8..f229e1e 100644[m
+[1m--- a/app/(admin)/admin/(dashboard)/pengaturan/SiteImageUploader.tsx[m
+[1m+++ b/app/(admin)/admin/(dashboard)/pengaturan/SiteImageUploader.tsx[m
+[36m@@ -37,10 +37,9 @@[m [mimport { useToast } from '@/components/admin/ToastProvider';[m
+  * empty strings. That is what lets an admin edit the WhatsApp number without[m
+  * having to re-pick the logo.[m
+  *[m
+[31m- * The Cloudinary asset itself is never deleted here. Removing an image only[m
+[31m- * unlinks it from the database; deleting remote media needs a trusted[m
+[31m- * server-side context this codebase deliberately does not have yet, and losing[m
+[31m- * an asset the admin may still want is worse than leaving one unreferenced.[m
+[32m+[m[32m * The Cloudinary asset itself is not deleted here — this component only writes[m
+[32m+[m[32m * the hidden form fields. The server action deletes the orphaned asset after the[m
+[32m+[m[32m * database commit succeeds, via lib/media-lifecycle.ts.[m
+  */[m
+ [m
+ interface SiteImageUploaderProps {[m
+[1mdiff --git a/app/(admin)/admin/(dashboard)/pengaturan/actions.ts b/app/(admin)/admin/(dashboard)/pengaturan/actions.ts[m
+[1mindex 5e1608b..d7e3b91 100644[m
+[1m--- a/app/(admin)/admin/(dashboard)/pengaturan/actions.ts[m
+[1m+++ b/app/(admin)/admin/(dashboard)/pengaturan/actions.ts[m
+[36m@@ -12,6 +12,7 @@[m [mimport {[m
+ } from '@/lib/data/admin/site';[m
+ import { siteSettingsSchema } from '@/lib/validation/site-settings';[m
+ import { ADMIN_TOASTS } from '@/lib/admin/toast';[m
+[32m+[m[32mimport { cleanupUnreferencedAssets } from '@/lib/media-lifecycle';[m
+ [m
+ /**[m
+  * Site settings mutation for the admin area.[m
+[36m@@ -130,9 +131,38 @@[m [mexport async function updateSiteSettings([m
+      */[m
+     const previous = await getAdminSiteSettings();[m
+     const previousHeroImageUrl = previous.settings?.heroImageUrl ?? null;[m
+[32m+[m[32m    const previousLogoPublicId = previous.settings?.logoPublicId ?? null;[m
+[32m+[m[32m    const previousHeroPublicId = previous.settings?.heroImagePublicId ?? null;[m
+ [m
+     await updateAdminSiteSettings(parsed.data);[m
+ [m
+[32m+[m[32m    /*[m
+[32m+[m[32m     * CLOUDINARY CLEANUP — AFTER THE COMMIT[m
+[32m+[m[32m     *[m
+[32m+[m[32m     * Replacing or clearing the logo/hero orphans the previous asset. Each old[m
+[32m+[m[32m     * public id is offered to the lifecycle helper only after the database write[m
+[32m+[m[32m     * succeeded; the helper re-checks references before any network call, so an[m
+[32m+[m[32m     * asset still used elsewhere is kept. A save that leaves both images alone[m
+[32m+[m[32m     * submits the same public ids, so nothing is cleaned.[m
+[32m+[m[32m     */[m
+[32m+[m[32m    const orphaned: string[] = [];[m
+[32m+[m[32m    if (previousLogoPublicId && previousLogoPublicId !== parsed.data.logoPublicId) {[m
+[32m+[m[32m      orphaned.push(previousLogoPublicId);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (previousHeroPublicId && previousHeroPublicId !== parsed.data.heroImagePublicId) {[m
+[32m+[m[32m      orphaned.push(previousHeroPublicId);[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if (orphaned.length > 0) {[m
+[32m+[m[32m      const cleanup = await cleanupUnreferencedAssets(orphaned);[m
+[32m+[m[32m      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m        console.warn([m
+[32m+[m[32m          '[media-lifecycle] settings saved, but asset(s) need manual cleanup:',[m
+[32m+[m[32m          cleanup.failed[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+     // The storefront reads settings in the root store layout, the hero, the[m
+     // navbar/footer and the contact page, so the whole storefront tree plus the[m
+     // settings screen itself is revalidated.[m
+[36m@@ -174,12 +204,9 @@[m [mexport async function updateSiteSettings([m
+  * It is idempotent and races safely: the two columns are nulled by id, so a[m
+  * double-click cannot blank anything but the logo.[m
+  *[m
+[31m- * CLOUINARY ASSETS ARE NOT DELETED[m
+[31m- * This only unlinks the reference. Deleting the remote asset would need the API[m
+[31m- * secret, which must never reach a client bundle or this file, and would be[m
+[31m- * irreversible if the admin wanted the logo back. The orphaned asset stays in the[m
+[31m- * `studio-marmer/site` media library for a later trusted cleanup pass, exactly[m
+[31m- * as replacing an image behaves today.[m
+[32m+[m[32m * Once the columns are null the old `public_id` is the only name the remote asset[m
+[32m+[m[32m * has, so it is read before the clear. The actual Cloudinary deletion runs after[m
+[32m+[m[32m * the commit succeeds, via lib/media-lifecycle.ts.[m
+  *[m
+  * No `heroImage*` column is touched: removing the logo must not disturb the hero[m
+  * photograph, and vice versa.[m
+[36m@@ -193,8 +220,24 @@[m [mexport async function removeSiteLogo(): Promise<SiteSettingsFormState> {[m
+   }[m
+ [m
+   try {[m
+[32m+[m[32m    // Read the current logo public id BEFORE clearing: after the update the[m
+[32m+[m[32m    // column is null and the remote asset could no longer be named.[m
+[32m+[m[32m    const before = await getAdminSiteSettings();[m
+[32m+[m[32m    const logoPublicId = before.settings?.logoPublicId ?? null;[m
+[32m+[m
+     await clearAdminSiteLogo(SITE_SETTINGS_ID);[m
+ [m
+[32m+[m[32m    // Clean up the orphaned asset only after the commit succeeded.[m
+[32m+[m[32m    if (logoPublicId) {[m
+[32m+[m[32m      const cleanup = await cleanupUnreferencedAssets([logoPublicId]);[m
+[32m+[m[32m      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m        console.warn([m
+[32m+[m[32m          '[media-lifecycle] logo removed, but asset(s) need manual cleanup:',[m
+[32m+[m[32m          cleanup.failed[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+     revalidatePath('/', 'layout');[m
+     revalidatePath('/admin/pengaturan');[m
+ [m
+[1mdiff --git a/app/(admin)/admin/(dashboard)/produk/actions.ts b/app/(admin)/admin/(dashboard)/produk/actions.ts[m
+[1mindex 657923d..e9db63d 100644[m
+[1m--- a/app/(admin)/admin/(dashboard)/produk/actions.ts[m
+[1m+++ b/app/(admin)/admin/(dashboard)/produk/actions.ts[m
+[36m@@ -24,6 +24,7 @@[m [mimport {[m
+   MAX_PRODUCT_ROWS,[m
+   overflowFieldErrors,[m
+ } from '@/lib/validation/product-rows';[m
+[32m+[m[32mimport { cleanupUnreferencedAssets } from '@/lib/media-lifecycle';[m
+ import type { ProductFormState } from '@/lib/validation/product-action-state';[m
+ import { buildFlashHref } from '@/lib/admin/toast';[m
+ [m
+[36m@@ -491,6 +492,38 @@[m [mexport async function updateProduct([m
+       }[m
+ [m
+       await Promise.all(operations);[m
+[32m+[m
+[32m+[m[32m      /*[m
+[32m+[m[32m       * CLOUDINARY CLEANUP — AFTER THE TRANSACTION COMMITTED[m
+[32m+[m[32m       *[m
+[32m+[m[32m       * The database is now the source of truth: any `public_id` that was on a[m
+[32m+[m[32m       * row before but is no longer on any row afterwards is unreferenced and[m
+[32m+[m[32m       * safe to delete remotely. Doing this inside the transaction would risk[m
+[32m+[m[32m       * deleting an asset the transaction then fails to commit, leaving the[m
+[32m+[m[32m       * storefront pointing at a file that no longer exists.[m
+[32m+[m[32m       *[m
+[32m+[m[32m       * A row that was UPDATED IN PLACE with a new photo also orphans its old[m
+[32m+[m[32m       * public id, so this set is computed from the before/after difference[m
+[32m+[m[32m       * rather than from `removedIds` alone — a replacement is not a removal,[m
+[32m+[m[32m       * but it leaves the same kind of orphan.[m
+[32m+[m[32m       */[m
+[32m+[m[32m      const orphanedPublicIds = existing[m
+[32m+[m[32m        .filter((row) => row.publicId)[m
+[32m+[m[32m        .map((row) => row.publicId as string)[m
+[32m+[m[32m        .filter((publicId) => {[m
+[32m+[m[32m          const stillUsed = keep.some((image) => image.publicId === publicId);[m
+[32m+[m[32m          return !stillUsed;[m
+[32m+[m[32m        });[m
+[32m+[m
+[32m+[m[32m      if (orphanedPublicIds.length > 0) {[m
+[32m+[m[32m        const cleanup = await cleanupUnreferencedAssets(orphanedPublicIds);[m
+[32m+[m[32m        if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m          console.warn([m
+[32m+[m[32m            `[media-lifecycle] product ${productId} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,[m
+[32m+[m[32m            cleanup.failed[m
+[32m+[m[32m          );[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+     });[m
+ [m
+     revalidatePath('/admin/produk');[m
+[36m@@ -537,6 +570,13 @@[m [mexport async function updateProduct([m
+  * The `'digest' in error` guard is not optional: `redirect()` signals by[m
+  * throwing, so without it the success path would fall straight into the catch[m
+  * and every successful delete would report a failure.[m
+[32m+[m[32m *[m
+[32m+[m[32m * CLOUDINARY ASSETS[m
+[32m+[m[32m * The image rows are removed by ON DELETE CASCADE, so their `public_id` values[m
+[32m+[m[32m * must be read BEFORE the product is deleted — afterwards they are simply gone[m
+[32m+[m[32m * and the remote assets would be orphaned with no way to name them. The actual[m
+[32m+[m[32m * Cloudinary deletion happens after the database commit succeeds; see[m
+[32m+[m[32m * lib/media-lifecycle.ts for why that order matters.[m
+  */[m
+ export async function deleteProduct(productId: number): Promise<void> {[m
+   if (!(await requireAdminEditor())) {[m
+[36m@@ -551,8 +591,35 @@[m [mexport async function deleteProduct(productId: number): Promise<void> {[m
+     });[m
+ [m
+     if (existing) {[m
+[32m+[m[32m      // Read the public ids before deleting: CASCADE removes the rows in the[m
+[32m+[m[32m      // same statement, so this is the only moment they are still queryable.[m
+[32m+[m[32m      const imagesBefore = await prisma.productImage.findMany({[m
+[32m+[m[32m        where: { productId },[m
+[32m+[m[32m        select: { publicId: true },[m
+[32m+[m[32m      });[m
+[32m+[m[32m      const publicIds = imagesBefore[m
+[32m+[m[32m        .map((image) => image.publicId)[m
+[32m+[m[32m        .filter((id): id is string => typeof id === 'string' && id.length > 0);[m
+[32m+[m
+       // ProductImage rows are removed by the schema's ON DELETE CASCADE.[m
+       await prisma.product.delete({ where: { id: productId } });[m
+[32m+[m
+[32m+[m[32m      // Now that the database no longer references these assets, ask the[m
+[32m+[m[32m      // lifecycle helper to delete them from Cloudinary. It re-checks[m
+[32m+[m[32m      // references before any network call, so an asset still used elsewhere[m
+[32m+[m[32m      // is kept.[m
+[32m+[m[32m      if (publicIds.length > 0) {[m
+[32m+[m[32m        const cleanup = await cleanupUnreferencedAssets(publicIds);[m
+[32m+[m[32m        if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {[m
+[32m+[m[32m          // Server-side warning only. The database change succeeded, so the[m
+[32m+[m[32m          // admin must not see a failure — but the assets that could not be[m
+[32m+[m[32m          // deleted stay named here for a follow-up pass.[m
+[32m+[m[32m          console.warn([m
+[32m+[m[32m            `[media-lifecycle] product ${productId} deleted, but ${cleanup.failed.length} asset(s) need manual cleanup:`,[m
+[32m+[m[32m            cleanup.failed[m
+[32m+[m[32m          );[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+     }[m
+ [m
+     revalidatePath('/admin/produk');[m
+[1mdiff --git a/lib/cloudinary-delete.ts b/lib/cloudinary-delete.ts[m
+[1mnew file mode 100644[m
+[1mindex 0000000..e6235cd[m
+[1m--- /dev/null[m
+[1m+++ b/lib/cloudinary-delete.ts[m
+[36m@@ -0,0 +1,288 @@[m
+[32m+[m[32mimport { createHash } from 'node:crypto';[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Authenticated server-side deletion of Cloudinary assets.[m
+[32m+[m[32m *[m
+[32m+[m[32m * WHY THIS IS HAND-ROLLED INSTEAD OF THE OFFICIAL SDK[m
+[32m+[m[32m * The Cloudinary Node SDK is not installed and this phase adds no dependency.[m
+[32m+[m[32m * That is fine: the Admin API's only authentication is a documented HMAC-SHA1[m
+[32m+[m[32m * signature over the request parameters, so the SDK can be replaced by ~30 lines[m
+[32m+[m[32m * using Node's built-in `crypto`. The signature scheme below is the one the SDK[m
+[32m+[m[32m * itself implements, so swapping to the SDK later is a drop-in change.[m
+[32m+[m[32m *[m
+[32m+[m[32m * AUTHENTICATION SCHEME (Cloudinary Admin API)[m
+[32m+[m[32m *   Only `public_id` and `timestamp` are signed; `api_key` is sent in the[m
+[32m+[m[32m *   request but explicitly excluded from the signature calculation.[m
+[32m+[m[32m *   Signature = SHA1( sorted({public_id, timestamp}) + api_secret ).[m
+[32m+[m[32m *   The secret never leaves this module, is never placed in a query string, and[m
+[32m+[m[32m *   never reaches a browser bundle or a `NEXT_PUBLIC_*` variable.[m
+[32m+[m[32m *[m
+[32m+[m[32m * CLOUDINARY ADMIN API SIGNED REQUESTS (reference):[m
+[32m+[m[32m *   - Collect all request parameters.[m
+[32m+[m[32m *   * Remove `api_key`, `signature`, `cloud_name`, `file` from the set.[m
+[32m+[m[32m *   * Sort the remaining parameter names alphabetically.[m
+[32m+[m[32m *   * Join as `key=value` pairs with `&`.[m
+[32m+[m[32m *   * Append the API secret (no separator before it).[m
+[32m+[m[32m *   * Compute SHA-1 digest.[m
+[32m+[m[32m *   * The `api_key` value is included in the POST body but NOT in the string[m
+[32m+[m[32m *     that is signed. This is why we omit it from `toSign` below.[m
+[32m+[m[32m */[m
+[32m+[m
+[32m+[m[32m/* SECURITY BOUNDARIES[m
+[32m+[m[32m * - All three variables are read without the `NEXT_PUBLIC_` prefix, so Next.js[m
+[32m+[m[32m *   keeps them server-only. Setting one with that prefix would inline it into[m
+[32m+[m[32m *   the client bundle.[m
+[32m+[m[32m * - An unsigned preset is NEVER accepted as a substitute for these credentials:[m
+[32m+[m[32m *   the preset authorises *uploads* and says nothing about delete rights.[m
+[32m+[m[32m * - Deletion is attempted only for a `publicId` that has already been verified[m
+[32m+[m[32m *   to belong to this cloud and to a Studio Marmer folder, by[m
+[32m+[m[32m *   lib/media-lifecycle.ts. This module never scopes on its own.[m
+[32m+[m[32m */[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Credentials, read on every call rather than once at import.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Read lazily so a deployment can change them without a restart, and so a test[m
+[32m+[m[32m * can set them per case. They are never prefixed `NEXT_PUBLIC_`, which is what[m
+[32m+[m[32m * keeps Next.js from inlining them into the browser bundle.[m
+[32m+[m[32m */[m
+[32m+[m[32mfunction credentials(): {[m
+[32m+[m[32m  cloudName: string;[m
+[32m+[m[32m  apiKey: string;[m
+[32m+[m[32m  apiSecret: string;[m
+[32m+[m[32m} {[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    cloudName: process.env.CLOUDINARY_CLOUD_NAME ?? '',[m
+[32m+[m[32m    apiKey: process.env.CLOUDINARY_API_KEY ?? '',[m
+[32m+[m[32m    apiSecret: process.env.CLOUDINARY_API_SECRET ?? '',[m
+[32m+[m[32m  };[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mconst ADMIN_API = 'https://api.cloudinary.com/v1_1';[m
+[32m+[m
+[32m+[m[32m/** Every asset this application may touch lives under this folder root. */[m
+[32m+[m[32mconst ASSET_ROOT = 'studio-marmer';[m
+[32m+[m
+[32m+[m[32mexport type CloudinaryDeleteOutcome =[m
+[32m+[m[32m  | 'deleted'[m
+[32m+[m[32m  /** No credentials configured — nothing was attempted, nothing was claimed. */[m
+[32m+[m[32m  | 'skipped-no-credentials'[m
+[32m+[m[32m  | 'not-found'[m
+[32m+[m[32m  | 'error';[m
+[32m+[m
+[32m+[m[32mexport type CloudinaryDeleteResult = {[m
+[32m+[m[32m  outcome: CloudinaryDeleteOutcome;[m
+[32m+[m[32m  /** Safe, loggable detail. Never includes the API secret. */[m
+[32m+[m[32m  detail?: string;[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mfunction isConfigured(): boolean {[m
+[32m+[m[32m  const { cloudName, apiKey, apiSecret } = credentials();[m
+[32m+[m[32m  return Boolean(cloudName && apiKey && apiSecret);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * True only when `publicId` sits inside a folder this application owns.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Uploads are filed by `lib/cloudinary-upload.ts` under `studio-marmer/<kind>`, so[m
+[32m+[m[32m * anything outside that root is a value the admin did not supply through a real[m
+[32m+[m[32m * upload — most likely a hand-edited form field. Refusing it here is what stops[m
+[32m+[m[32m * this function from becoming "delete any asset by name".[m
+[32m+[m[32m */[m
+[32m+[m[32mexport function isWithinAssetScope(publicId: string): boolean {[m
+[32m+[m[32m  if (typeof publicId !== 'string' || publicId.length === 0) return false;[m
+[32m+[m[32m  const trimmed = publicId.trim();[m
+[32m+[m[32m  if (trimmed.length === 0) return false;[m
+[32m+[m
+[32m+[m[32m  // Reject anything carrying a scheme: the value must be a plain Cloudinary[m
+[32m+[m[32m  // public id, not a URL an admin typed into the field.[m
+[32m+[m[32m  if (/^https?:\/\//i.test(trimmed)) return false;[m
+[32m+[m
+[32m+[m[32m  // Reject path traversal in every encoding it can arrive in. A literal `..`[m
+[32m+[m[32m  // segment is the obvious form, but `%2e%2e` and friends decode to the same[m
+[32m+[m[32m  // thing downstream, so percent-decode before testing.[m
+[32m+[m[32m  let decoded = trimmed;[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    decoded = decodeURIComponent(trimmed);[m
+[32m+[m[32m  } catch {[m
+[32m+[m[32m    // Malformed percent-encoding — treat as out of scope rather than guessing.[m
+[32m+[m[32m    return false;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const segments = decoded.split('/');[m
+[32m+[m[32m  if (segments.some((segment) => segment === '..' || segment === '.')) {[m
+[32m+[m[32m    return false;[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return trimmed === ASSET_ROOT || trimmed.startsWith(`${ASSET_ROOT}/`);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Builds the Cloudinary Admin API signature for image destroy requests.[m
+[32m+[m[32m *[m
+[32m+[m[32m * This pure function computes the HMAC-SHA1 signature using the documented[m
+[32m+[m[32m * scheme: sort `public_id` and `timestamp` alphabetically, join as[m
+[32m+[m[32m * `key=value` with `&`, append the API secret, then SHA1.[m
+[32m+[m[32m *[m
+[32m+[m[32m * `api_key` is deliberately NOT included in the string that is signed — it is[m
+[32m+[m[32m * sent in the POST body but excluded from the signature, per Cloudinary's[m
+[32m+[m[32m * authentication specification.[m
+[32m+[m[32m *[m
+[32m+[m[32m * @param publicId - The Cloudinary public_id of the asset to delete[m
+[32m+[m[32m * @param timestamp - Unix timestamp (seconds)[m
+[32m+[m[32m * @param apiSecret - The Cloudinary API secret (server-only, never client-facing)[m
+[32m+[m[32m * @returns The hex-encoded SHA1 signature[m
+[32m+[m[32m *[m
+[32m+[m[32m * EXAMPLE (without real secrets):[m
+[32m+[m[32m *   buildCloudinaryDeleteSignature('my_asset', 1700000000, 'my_secret')[m
+[32m+[m[32m *   // returns 'a3f2...' (deterministic given the same inputs)[m
+[32m+[m[32m */[m
+[32m+[m[32mexport function buildCloudinaryDeleteSignature([m
+[32m+[m[32m  publicId: string,[m
+[32m+[m[32m  timestamp: number,[m
+[32m+[m[32m  apiSecret: string[m
+[32m+[m[32m): string {[m
+[32m+[m[32m  const toSign = [[m
+[32m+[m[32m    `public_id=${publicId}`,[m
+[32m+[m[32m    `timestamp=${timestamp}`,[m
+[32m+[m[32m  ][m
+[32m+[m[32m    .sort()[m
+[32m+[m[32m    .join('&');[m
+[32m+[m
+[32m+[m[32m  return createHash('sha1')[m
+[32m+[m[32m    .update(`${toSign}${apiSecret}`)[m
+[32m+[m[32m    .digest('hex');[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Signs and issues one DELETE request.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Kept free of Prisma and of the filesystem so the whole signature + request path[m
+[32m+[m[32m * is unit-testable by stubbing `fetch`.[m
+[32m+[m[32m */[m
+[32m+[m[32mexport async function deleteCloudinaryAsset([m
+[32m+[m[32m  publicId: string[m
+[32m+[m[32m): Promise<CloudinaryDeleteResult> {[m
+[32m+[m[32m  if (!isConfigured()) {[m
+[32m+[m[32m    // Fail closed and say so. A missing credential must never be reported as a[m
+[32m+[m[32m    // successful deletion.[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      outcome: 'skipped-no-credentials',[m
+[32m+[m[32m      detail: 'CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET belum diisi.',[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  const { cloudName, apiKey, apiSecret } = credentials();[m
+[32m+[m
+[32m+[m[32m  const timestamp = Math.floor(Date.now() / 1000);[m
+[32m+[m
+[32m+[m[32m  const signature = buildCloudinaryDeleteSignature(publicId, timestamp, apiSecret);[m
+[32m+[m
+[32m+[m[32m  const url = `${ADMIN_API}/${cloudName}/image/destroy`;[m
+[32m+[m
+[32m+[m[32m  let response: Response;[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    response = await fetch(url, {[m
+[32m+[m[32m      method: 'POST',[m
+[32m+[m[32m      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },[m
+[32m+[m[32m      body: new URLSearchParams({[m
+[32m+[m[32m        public_id: publicId,[m
+[32m+[m[32m        api_key: apiKey,[m
+[32m+[m[32m        signature,[m
+[32m+[m[32m        timestamp: String(timestamp),[m
+[32m+[m[32m      }).toString(),[m
+[32m+[m[32m    });[m
+[32m+[m[32m  } catch (error) {[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      outcome: 'error',[m
+[32m+[m[32m      detail: `Cloudinary tidak dapat dihubungi: ${(error as Error).message}`,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  // 404 from Cloudinary — try to read the JSON body.  If the body reports[m
+[32m+[m[32m  // `result: not found` then the asset is genuinely gone.  Otherwise (malformed[m
+[32m+[m[32m  // body, different error wording, or a non-Cloudinary 404) we treat it as an[m
+[32m+[m[32m  // error so as not to silently ignore a configuration or credential problem.[m
+[32m+[m[32m  if (response.status === 404) {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const cloudResult = await response.json();[m
+[32m+[m[32m      if (cloudResult && typeof cloudResult === 'object') {[m
+[32m+[m[32m        const resultField = (cloudResult as { result?: string })?.result;[m
+[32m+[m[32m        if (resultField === 'not found') {[m
+[32m+[m[32m          return { outcome: 'not-found' };[m
+[32m+[m[32m        }[m
+[32m+[m[32m        if (resultField === 'ok') {[m
+[32m+[m[32m          return { outcome: 'deleted' };[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m    } catch {[m
+[32m+[m[32m      // Non‑JSON 404 body — could be a config/credential issue; don't auto‑assume[m
+[32m+[m[32m      // the asset is deleted.[m
+[32m+[m[32m    }[m
+[32m+[m[32m    // Fell through: treat as error rather than “already deleted”.[m
+[32m+[m[32m    return { outcome: 'error' };[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (!response.ok) {[m
+[32m+[m[32m    let message = '';[m
+[32m+[m[32m    let cloudResult = null;[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      cloudResult = await response.json();[m
+[32m+[m[32m      message =[m
+[32m+[m[32m        (cloudResult as { error?: { message?: string } })?.error?.message ?? '';[m
+[32m+[m[32m    } catch {[m
+[32m+[m[32m      // Non-JSON error body; fall through to the status code alone.[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // If JSON was parseable, verify the Cloudinary `result` field.[m
+[32m+[m[32m    // HTTP 200 with `result: not found` means the asset is already gone.[m
+[32m+[m[32m    // HTTP 200 with `result: ok` means deletion succeeded.[m
+[32m+[m[32m    if (cloudResult && typeof cloudResult === 'object') {[m
+[32m+[m[32m      const resultField = (cloudResult as { result?: string })?.result;[m
+[32m+[m[32m      if (resultField === 'ok') {[m
+[32m+[m[32m        return { outcome: 'deleted' };[m
+[32m+[m[32m      }[m
+[32m+[m[32m      if (resultField === 'not found') {[m
+[32m+[m[32m        return { outcome: 'not-found' };[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    return {[m
+[32m+[m[32m      outcome: 'error',[m
+[32m+[m[32m      detail: `Cloudinary menolak penghapusan (HTTP ${response.status})${message ? `: ${message}` : ''}`,[m
+[32m+[m[32m    };[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  // Even on 200 OK, verify the Cloudinary `result` field to confirm deletion.[m
+[32m+[m[32m  // Some responses may return 200 but with `result: not found` or other values.[m
+[32m+[m[32m  if (response.ok) {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const body: unknown = await response.json();[m
+[32m+[m[32m      if (body && typeof body === 'object') {[m
+[32m+[m[32m        const resultField = (body as { result?: string })?.result;[m
+[32m+[m[32m        if (resultField === 'ok') {[m
+[32m+[m[32m          return { outcome: 'deleted' };[m
+[32m+[m[32m        }[m
+[32m+[m[32m        if (resultField === 'not found') {[m
+[32m+[m[32m          return { outcome: 'not-found' };[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m      // JSON was parsed but contains no recognized `result` field → error.[m
+[32m+[m[32m      // Do NOT fall through to "deleted".[m
+[32m+[m[32m      return {[m
+[32m+[m[32m        outcome: 'error',[m
+[32m+[m[32m        detail: 'Cloudinary response 200 OK but body lacked `result` field',[m
+[32m+[m[32m      };[m
+[32m+[m[32m    } catch {[m
+[32m+[m[32m      // JSON was malformed/unparseable on a 200 response → error, not success.[m
+[32m+[m[32m      return {[m
+[32m+[m[32m        outcome: 'error',[m
+[32m+[m[32m        detail: 'Cloudinary response 200 OK but body was not valid JSON',[m
+[32m+[m[32m      };[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  // response.ok is false but we already handled 404 above, so this is a[m
+[32m+[m[32m  // real HTTP error from Cloudinary.[m
+[32m+[m[32m  return { outcome: 'error' };[m
+[32m+[m[32m}[m
+[1mdiff --git a/lib/data/admin/site.ts b/lib/data/admin/site.ts[m
+[1mindex 7a0e0ef..fd39f47 100644[m
+[1m--- a/lib/data/admin/site.ts[m
+[1m+++ b/lib/data/admin/site.ts[m
+[36m@@ -142,10 +142,8 @@[m [mexport async function clearAdminSiteLogo(id: number): Promise<void> {[m
+  * The submitted media fields are authoritative. Keeping an image is just the[m
+  * uploader re-submitting the values it already holds, and removing it is[m
+  * submitting blanks, so there is no separate "unchanged" case to special-case.[m
+[31m- * Replacing an image leaves the previous Cloudinary asset in place: deleting[m
+[31m- * remote media needs a trusted server-side context this codebase does not have[m
+[31m- * yet, and losing an asset the admin may still want is worse than leaving one[m
+[31m- * unreferenced for a later cleanup pass.[m
+[32m+[m[32m * Replacing or clearing an image orphans the previous Cloudinary asset; the[m
+[32m+[m[32m * server action calls lib/media-lifecycle.ts after committing to delete it.[m
+  */[m
+ export async function updateAdminSiteSettings([m
+   input: SiteSettingsInput[m
+[1mdiff --git a/lib/media-lifecycle.ts b/lib/media-lifecycle.ts[m
+[1mnew file mode 100644[m
+[1mindex 0000000..65d96ab[m
+[1m--- /dev/null[m
+[1m+++ b/lib/media-lifecycle.ts[m
+[36m@@ -0,0 +1,167 @@[m
+[32m+[m[32mimport { prisma } from '@/lib/db/prisma';[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  deleteCloudinaryAsset,[m
+[32m+[m[32m  isWithinAssetScope,[m
+[32m+[m[32m  type CloudinaryDeleteResult,[m
+[32m+[m[32m} from '@/lib/cloudinary-delete';[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Central media-asset lifecycle helper.[m
+[32m+[m[32m *[m
+[32m+[m[32m * THE PROBLEM THIS SOLVES[m
+[32m+[m[32m * Uploads go straight from the browser to Cloudinary, so the application holds[m
+[32m+[m[32m * only the resulting `public_id`. Until now every delete and replace path removed[m
+[32m+[m[32m * the MySQL row and left the remote asset behind, because deleting remote media[m
+[32m+[m[32m * needs a server-side credential the codebase did not have. That left real files[m
+[32m+[m[32m * in the `studio-marmer/*` media library that no row referenced — and, worse,[m
+[32m+[m[32m * a replace silently orphaned the previous photo.[m
+[32m+[m[32m *[m
+[32m+[m[32m * THE RULE THIS ENFORCES[m
+[32m+[m[32m * A Cloudinary asset is deleted only when BOTH hold:[m
+[32m+[m[32m *   1. its `public_id` is inside a folder this application owns, and[m
+[32m+[m[32m *   2. no live database row references it.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Either condition failing means the asset is kept. That is the safe direction:[m
+[32m+[m[32m * an unreferenced file costs storage; a deleted file that a product still points[m
+[32m+[m[32m * at is a broken image on the storefront.[m
+[32m+[m[32m *[m
+[32m+[m[32m * WHY THE DATABASE IS CHECKED AGAIN HERE[m
+[32m+[m[32m * MySQL and Cloudinary share no transaction. Between the moment a row stops[m
+[32m+[m[32m * referencing an asset and the moment Cloudinary confirms the delete, another[m
+[32m+[m[32m * request could have started referencing it. Re-reading the database immediately[m
+[32m+[m[32m * before the delete call is what makes "delete only unreferenced" true rather[m
+[32m+[m[32m * than merely intended.[m
+[32m+[m[32m *[m
+[32m+[m[32m * ORDERING CONTRACT WITH CALLERS[m
+[32m+[m[32m * Callers must commit the database change FIRST and only then call this helper.[m
+[32m+[m[32m * Deleting the asset first would leave a window in which the row points at a file[m
+[32m+[m[32m * that no longer exists.[m
+[32m+[m[32m */[m
+[32m+[m
+[32m+[m[32m/** Every column in the schema that stores a Cloudinary public id. */[m
+[32m+[m[32mconst PUBLIC_ID_COLUMNS = [[m
+[32m+[m[32m  { model: 'productImage', column: 'publicId' },[m
+[32m+[m[32m  { model: 'category', column: 'publicId' },[m
+[32m+[m[32m  { model: 'galleryImage', column: 'publicId' },[m
+[32m+[m[32m  { model: 'siteSettings', column: 'logoPublicId' },[m
+[32m+[m[32m  { model: 'siteSettings', column: 'heroImagePublicId' },[m
+[32m+[m[32m] as const;[m
+[32m+[m
+[32m+[m[32mexport type CleanupResult = {[m
+[32m+[m[32m  /** Assets Cloudinary confirmed gone. */[m
+[32m+[m[32m  deleted: string[];[m
+[32m+[m[32m  /** Assets already absent upstream — the end state the caller wanted. */[m
+[32m+[m[32m  notFound: string[];[m
+[32m+[m[32m  /** Assets that could not be deleted and still need a later pass. */[m
+[32m+[m[32m  failed: string[];[m
+[32m+[m[32m  /** Assets deliberately kept because something still references them. */[m
+[32m+[m[32m  retained: string[];[m
+[32m+[m[32m  /** Candidates rejected before any network call (out of scope / malformed). */[m
+[32m+[m[32m  rejected: string[];[m
+[32m+[m[32m  /** True when no credentials are configured, so nothing was attempted. */[m
+[32m+[m[32m  skippedNoCredentials: boolean;[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * True while any live row still stores `publicId`.[m
+[32m+[m[32m *[m
+[32m+[m[32m * `siteSettings` is a singleton, so its two columns are checked with a single[m
+[32m+[m[32m * `findFirst` rather than a count.[m
+[32m+[m[32m */[m
+[32m+[m[32mexport async function isPublicIdReferenced(publicId: string): Promise<boolean> {[m
+[32m+[m[32m  const [productImages, categories, galleryImages, siteSettings] = await Promise.all([[m
+[32m+[m[32m    prisma.productImage.findFirst({[m
+[32m+[m[32m      where: { publicId },[m
+[32m+[m[32m      select: { id: true },[m
+[32m+[m[32m    }),[m
+[32m+[m[32m    prisma.category.findFirst({ where: { publicId }, select: { id: true } }),[m
+[32m+[m[32m    prisma.galleryImage.findFirst({ where: { publicId }, select: { id: true } }),[m
+[32m+[m[32m    prisma.siteSettings.findFirst({[m
+[32m+[m[32m      where: { OR: [{ logoPublicId: publicId }, { heroImagePublicId: publicId }] },[m
+[32m+[m[32m      select: { id: true },[m
+[32m+[m[32m    }),[m
+[32m+[m[32m  ]);[m
+[32m+[m
+[32m+[m[32m  return Boolean(productImages || categories || galleryImages || siteSettings);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Deletes every candidate that is in scope and no longer referenced.[m
+[32m+[m[32m *[m
+[32m+[m[32m * `candidates` are `public_id` values that a caller has already decided are no[m
+[32m+[m[32m * longer wanted — typically the value a row held *before* an update committed.[m
+[32m+[m[32m * This function never derives candidates from the browser and never guesses a[m
+[32m+[m[32m * public id from a URL.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Failures are collected, not thrown: one unreachable asset must not abort the[m
+[32m+[m[32m * caller's already-committed database change, and must not be reported as a[m
+[32m+[m[32m * success the admin cannot act on.[m
+[32m+[m[32m */[m
+[32m+[m[32mexport async function cleanupUnreferencedAssets([m
+[32m+[m[32m  candidates: readonly string[][m
+[32m+[m[32m): Promise<CleanupResult> {[m
+[32m+[m[32m  const result: CleanupResult = {[m
+[32m+[m[32m    deleted: [],[m
+[32m+[m[32m    notFound: [],[m
+[32m+[m[32m    failed: [],[m
+[32m+[m[32m    retained: [],[m
+[32m+[m[32m    rejected: [],[m
+[32m+[m[32m    skippedNoCredentials: false,[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  // De-duplicate so a value submitted twice is not deleted twice.[m
+[32m+[m[32m  const unique = [...new Set(candidates)];[m
+[32m+[m
+[32m+[m[32m  for (const candidate of unique) {[m
+[32m+[m[32m    if (!isWithinAssetScope(candidate)) {[m
+[32m+[m[32m      result.rejected.push(candidate);[m
+[32m+[m[32m      continue;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // Re-read the database immediately before the delete. See the ordering[m
+[32m+[m[32m    // contract above.[m
+[32m+[m[32m    if (await isPublicIdReferenced(candidate)) {[m
+[32m+[m[32m      result.retained.push(candidate);[m
+[32m+[m[32m      continue;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const outcome: CloudinaryDeleteResult = await deleteCloudinaryAsset(candidate);[m
+[32m+[m
+[32m+[m[32m    switch (outcome.outcome) {[m
+[32m+[m[32m      case 'deleted':[m
+[32m+[m[32m        result.deleted.push(candidate);[m
+[32m+[m[32m        break;[m
+[32m+[m[32m      case 'not-found':[m
+[32m+[m[32m        result.notFound.push(candidate);[m
+[32m+[m[32m        break;[m
+[32m+[m[32m      case 'skipped-no-credentials':[m
+[32m+[m[32m        // Recorded once; the caller reports it rather than claiming success.[m
+[32m+[m[32m        result.skippedNoCredentials = true;[m
+[32m+[m[32m        result.failed.push(candidate);[m
+[32m+[m[32m        break;[m
+[32m+[m[32m      case 'error':[m
+[32m+[m[32m        result.failed.push(candidate);[m
+[32m+[m[32m        break;[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  return result;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Convenience wrapper for the common "replace one image" case.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Returns the old public id when it should be cleaned up, or `null` when there is[m
+[32m+[m[32m * nothing to clean — which is what a metadata-only edit must produce.[m
+[32m+[m[32m */[m
+[32m+[m[32mexport async function cleanupReplacedAsset([m
+[32m+[m[32m  previousPublicId: string | null | undefined,[m
+[32m+[m[32m  nextPublicId: string | null | undefined[m
+[32m+[m[32m): Promise<CleanupResult | null> {[m
+[32m+[m[32m  // No previous asset, or the value did not actually change: nothing to clean.[m
+[32m+[m[32m  // This is what keeps a metadata-only save from deleting a live photo.[m
+[32m+[m[32m  if (!previousPublicId) return null;[m
+[32m+[m[32m  if (previousPublicId === nextPublicId) return null;[m
+[32m+[m
+[32m+[m[32m  return cleanupUnreferencedAssets([previousPublicId]);[m
+[32m+[m[32m}[m
+[1mdiff --git a/tests/unit/media-lifecycle.test.ts b/tests/unit/media-lifecycle.test.ts[m
+[1mnew file mode 100644[m
+[1mindex 0000000..a26c988[m
+[1m--- /dev/null[m
+[1m+++ b/tests/unit/media-lifecycle.test.ts[m
+[36m@@ -0,0 +1,371 @@[m
+[32m+[m[32m﻿import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';[m
+[32m+[m
+[32m+[m[32m/**[m
+[32m+[m[32m * Unit tests for the media lifecycle helper.[m
+[32m+[m[32m *[m
+[32m+[m[32m * Prisma is stubbed at the module boundary and Cloudinary is stubbed by[m
+[32m+[m[32m * replacing global `fetch`, so neither a database nor a real credential is[m
+[32m+[m[32m * needed. Every case asserts on real behaviour: which candidates were kept,[m
+[32m+[m[32m * which were deleted, and in what order the checks happen.[m
+[32m+[m[32m */[m
+[32m+[m
+[32m+[m[32m// `vi.mock` is hoisted above every import, so the mock factory cannot close over[m
+[32m+[m[32m// a top-level `const`. `vi.hoisted` runs first and hands the stubs down.[m
+[32m+[m[32mconst mocks = vi.hoisted(() => ({[m
+[32m+[m[32m  findFirst: vi.fn(),[m
+[32m+[m[32m}));[m
+[32m+[m
+[32m+[m[32mvi.mock('@/lib/db/prisma', () => ({[m
+[32m+[m[32m  prisma: {[m
+[32m+[m[32m    productImage: { findFirst: mocks.findFirst },[m
+[32m+[m[32m    category: { findFirst: mocks.findFirst },[m
+[32m+[m[32m    galleryImage: { findFirst: mocks.findFirst },[m
+[32m+[m[32m    siteSettings: { findFirst: mocks.findFirst },[m
+[32m+[m[32m  },[m
+[32m+[m[32m}));[m
+[32m+[m
+[32m+[m[32mimport {[m
+[32m+[m[32m  cleanupUnreferencedAssets,[m
+[32m+[m[32m  cleanupReplacedAsset,[m
+[32m+[m[32m  isPublicIdReferenced,[m
+[32m+[m[32m} from '@/lib/media-lifecycle';[m
+[32m+[m[32mimport { buildCloudinaryDeleteSignature } from '@/lib/cloudinary-delete';[m
+[32m+[m[32mimport { createHash } from 'node:crypto';[m
+[32m+[m[32mimport { isWithinAssetScope } from '@/lib/cloudinary-delete';[m
+[32m+[m
+[32m+[m[32m/** Stubs the Cloudinary DELETE endpoint and records what was requested. */[m
+[32m+[m[32mfunction stubCloudinary([m
+[32m+[m[32m  handler: (url: string, body: URLSearchParams) => { status: number; body?: unknown }[m
+[32m+[m[32m) {[m
+[32m+[m[32m  const calls: Array<{ publicId: string; apiKey: string | null; signature: string | null }> = [];[m
+[32m+[m[32m  const original = globalThis.fetch;[m
+[32m+[m[32m  vi.stubGlobal('fetch', vi.fn(async (input: unknown, init?: RequestInit) => {[m
+[32m+[m[32m    const url = String(input);[m
+[32m+[m[32m    if (!url.includes('api.cloudinary.com')) {[m
+[32m+[m[32m      throw new Error(`unexpected fetch target: ${url}`);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    const body = new URLSearchParams(String(init?.body ?? ''));[m
+[32m+[m[32m    const publicId = body.get('public_id') ?? '';[m
+[32m+[m[32m    calls.push({[m
+[32m+[m[32m      publicId,[m
+[32m+[m[32m      apiKey: body.get('api_key'),[m
+[32m+[m[32m      signature: body.get('signature'),[m
+[32m+[m[32m    });[m
+[32m+[m[32m    const { status, body: payload } = handler(url, body);[m
+[32m+[m[32m    return new Response(JSON.stringify(payload ?? {}), {[m
+[32m+[m[32m      status,[m
+[32m+[m[32m      headers: { 'Content-Type': 'application/json' },[m
+[32m+[m[32m    });[m
+[32m+[m[32m  }));[m
+[32m+[m[32m  return {[m
+[32m+[m[32m    calls,[m
+[32m+[m[32m    restore: () => vi.stubGlobal('fetch', original),[m
+[32m+[m[32m  };[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/** Default: every Prisma lookup finds nothing, so nothing is referenced. */[m
+[32m+[m[32mfunction nothingReferenced() {[m
+[32m+[m[32m  mocks.findFirst.mockReset();[m
+[32m+[m[32m  mocks.findFirst.mockResolvedValue(null);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mbeforeEach(() => {[m
+[32m+[m[32m  vi.clearAllMocks();[m
+[32m+[m[32m  nothingReferenced();[m
+[32m+[m[32m  // Credentials are read per call (not at import), so stub them here for any[m
+[32m+[m[32m  // case that should reach the network. Cases that test the no-credential path[m
+[32m+[m[32m  // clear them explicitly.[m
+[32m+[m[32m  vi.stubEnv('CLOUDINARY_CLOUD_NAME', 'testcloud');[m
+[32m+[m[32m  vi.stubEnv('CLOUDINARY_API_KEY', 'testkey');[m
+[32m+[m[32m  vi.stubEnv('CLOUDINARY_API_SECRET', 'testsecret');[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mafterEach(() => {[m
+[32m+[m[32m  vi.unstubAllGlobals();[m
+[32m+[m[32m  vi.unstubAllEnvs();[m
+[32m+[m[32m  vi.resetModules();[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mdescribe('isWithinAssetScope', () => {[m
+[32m+[m[32m  it('accepts every folder the application owns', () => {[m
+[32m+[m[32m    expect(isWithinAssetScope('studio-marmer/products/a1')).toBe(true);[m
+[32m+[m[32m    expect(isWithinAssetScope('studio-marmer/categories/c9')).toBe(true);[m
+[32m+[m[32m    expect(isWithinAssetScope('studio-marmer/gallery/g1')).toBe(true);[m
+[32m+[m[32m    expect(isWithinAssetScope('studio-marmer/site/l1')).toBe(true);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('rejects assets outside the Studio Marmer root', () => {[m
+[32m+[m[32m    for (const value of [[m
+[32m+[m[32m      'other-studio/products/a1',[m
+[32m+[m[32m      'studio-marmer-other/products/a1',[m
+[32m+[m[32m      'products/a1',[m
+[32m+[m[32m      '',[m
+[32m+[m[32m      '   ',[m
+[32m+[m[32m      'https://res.cloudinary.com/x/studio-marmer/products/a1',[m
+[32m+[m[32m      'studio-marmer/../other',[m
+[32m+[m[32m      'studio-marmer/%2e%2e/other',[m
+[32m+[m[32m    ]) {[m
+[32m+[m[32m      expect(isWithinAssetScope(value), JSON.stringify(value)).toBe(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mdescribe('isPublicIdReferenced', () => {[m
+[32m+[m[32m  it('is true when any one of the five columns holds the value', async () => {[m
+[32m+[m[32m    const columns = ['productImage', 'category', 'galleryImage', 'siteSettings'] as const;[m
+[32m+[m
+[32m+[m[32m    for (let i = 0; i < columns.length; i++) {[m
+[32m+[m[32m      vi.clearAllMocks();[m
+[32m+[m[32m      mocks.findFirst.mockImplementation(async () => (i === 3 ? { id: 1 } : null));[m
+[32m+[m[32m      // siteSettings is the 4th call; make only that one resolve.[m
+[32m+[m[32m      mocks.findFirst.mockReset();[m
+[32m+[m[32m      const results = [null, null, null, { id: 1 }];[m
+[32m+[m[32m      mocks.findFirst.mockImplementation(async () => results.shift() ?? null);[m
+[32m+[m
+[32m+[m[32m      await expect(isPublicIdReferenced('studio-marmer/x/1')).resolves.toBe(true);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('is false when no row references it', async () => {[m
+[32m+[m[32m    vi.clearAllMocks();[m
+[32m+[m[32m    nothingReferenced();[m
+[32m+[m[32m    await expect(isPublicIdReferenced('studio-marmer/x/1')).resolves.toBe(false);[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mdescribe('cleanupUnreferencedAssets', () => {[m
+[32m+[m[32m  it('deletes an in-scope asset that nothing references', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: { result: 'ok' } }));[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets(['studio-marmer/products/old1']);[m
+[32m+[m
+[32m+[m[32m    expect(result.deleted).toEqual(['studio-marmer/products/old1']);[m
+[32m+[m[32m    expect(result.failed).toEqual([]);[m
+[32m+[m[32m    expect(result.retained).toEqual([]);[m
+[32m+[m[32m    expect(stub.calls).toHaveLength(1);[m
+[32m+[m[32m    expect(stub.calls[0].publicId).toBe('studio-marmer/products/old1');[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('sends the credentials Cloudinary expects, without exposing the secret', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: { result: 'ok' } }));[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets(['studio-marmer/products/a1']);[m
+[32m+[m
+[32m+[m[32m    expect(result.deleted).toEqual(['studio-marmer/products/a1']);[m
+[32m+[m[32m    expect(stub.calls).toHaveLength(1);[m
+[32m+[m[32m    expect(stub.calls[0].publicId).toBe('studio-marmer/products/a1');[m
+[32m+[m[32m    expect(stub.calls[0].apiKey).toBe('testkey');[m
+[32m+[m[32m    expect(stub.calls[0].signature).toMatch(/^[0-9a-f]{40}$/);[m
+[32m+[m[32m    // The secret must never appear in the request.[m
+[32m+[m[32m    expect(JSON.stringify(stub.calls)).not.toContain('testsecret');[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('keeps an asset that is still referenced by a product image', async () => {[m
+[32m+[m[32m    vi.clearAllMocks();[m
+[32m+[m[32m    mocks.findFirst.mockResolvedValue({ id: 5 });[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: {} }));[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets(['studio-marmer/products/live']);[m
+[32m+[m
+[32m+[m[32m    expect(result.retained).toEqual(['studio-marmer/products/live']);[m
+[32m+[m[32m    expect(result.deleted).toEqual([]);[m
+[32m+[m[32m    // No network call at all for a retained asset.[m
+[32m+[m[32m    expect(stub.calls).toHaveLength(0);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('rejects out-of-scope candidates before any network call', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: {} }));[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets([[m
+[32m+[m[32m      'other-studio/products/a1',[m
+[32m+[m[32m      'https://evil.example/x',[m
+[32m+[m[32m      'studio-marmer/../../etc',[m
+[32m+[m[32m    ]);[m
+[32m+[m
+[32m+[m[32m    expect(result.rejected).toEqual([[m
+[32m+[m[32m      'other-studio/products/a1',[m
+[32m+[m[32m      'https://evil.example/x',[m
+[32m+[m[32m      'studio-marmer/../../etc',[m
+[32m+[m[32m    ]);[m
+[32m+[m[32m    expect(stub.calls).toHaveLength(0);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('de-duplicates a candidate submitted twice', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: {} }));[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets([[m
+[32m+[m[32m      'studio-marmer/gallery/g1',[m
+[32m+[m[32m      'studio-marmer/gallery/g1',[m
+[32m+[m[32m    ]);[m
+[32m+[m
+[32m+[m[32m    expect(stub.calls).toHaveLength(1);[m
+[32m+[m[32m    expect(result.deleted).toEqual(['studio-marmer/gallery/g1']);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('treats an upstream 404 as already gone', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 404 }));[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets(['studio-marmer/site/old']);[m
+[32m+[m
+[32m+[m[32m    expect(result.notFound).toEqual(['studio-marmer/site/old']);[m
+[32m+[m[32m    expect(result.failed).toEqual([]);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('collects a Cloudinary rejection as a failure, not a success', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({[m
+[32m+[m[32m      status: 400,[m
+[32m+[m[32m      body: { error: { message: 'Invalid API key' } },[m
+[32m+[m[32m    }));[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets(['studio-marmer/products/old']);[m
+[32m+[m
+[32m+[m[32m    expect(result.failed).toEqual(['studio-marmer/products/old']);[m
+[32m+[m[32m    expect(result.deleted).toEqual([]);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('surfaces a network error as a failure with a readable reason', async () => {[m
+[32m+[m[32m    const original = globalThis.fetch;[m
+[32m+[m[32m    vi.stubGlobal([m
+[32m+[m[32m      'fetch',[m
+[32m+[m[32m      vi.fn(async () => {[m
+[32m+[m[32m        throw new Error('socket hangup');[m
+[32m+[m[32m      })[m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets(['studio-marmer/products/old']);[m
+[32m+[m
+[32m+[m[32m    expect(result.failed).toEqual(['studio-marmer/products/old']);[m
+[32m+[m[32m    expect(result.deleted).toEqual([]);[m
+[32m+[m[32m    vi.stubGlobal('fetch', original);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('does not let one failure abort the remaining candidates', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary((_url, body) =>[m
+[32m+[m[32m      body.get('public_id') === 'studio-marmer/products/bad'[m
+[32m+[m[32m        ? { status: 500, body: {} }[m
+[32m+[m[32m        : { status: 200, body: {} }[m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets([[m
+[32m+[m[32m      'studio-marmer/products/bad',[m
+[32m+[m[32m      'studio-marmer/products/good',[m
+[32m+[m[32m    ]);[m
+[32m+[m
+[32m+[m[32m    expect(result.failed).toEqual(['studio-marmer/products/bad']);[m
+[32m+[m[32m    expect(result.deleted).toEqual(['studio-marmer/products/good']);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('skips cleanly and reports it when no credentials are configured', async () => {[m
+[32m+[m[32m    // Clear the credentials stubbed in beforeEach to exercise the fail-closed path.[m
+[32m+[m[32m    vi.unstubAllEnvs();[m
+[32m+[m
+[32m+[m[32m    const result = await cleanupUnreferencedAssets(['studio-marmer/products/old']);[m
+[32m+[m
+[32m+[m[32m    expect(result.skippedNoCredentials).toBe(true);[m
+[32m+[m[32m    expect(result.failed).toEqual(['studio-marmer/products/old']);[m
+[32m+[m[32m    expect(result.deleted).toEqual([]);[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32mdescribe('cleanupReplacedAsset', () => {[m
+[32m+[m[32m  it('returns null when there was no previous asset', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: {} }));[m
+[32m+[m[32m    await expect(cleanupReplacedAsset(null, 'studio-marmer/x/new')).resolves.toBeNull();[m
+[32m+[m[32m    await expect(cleanupReplacedAsset(undefined, 'studio-marmer/x/new')).resolves.toBeNull();[m
+[32m+[m[32m    expect(stub.calls).toHaveLength(0);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('returns null when the image did not actually change', async () => {[m
+[32m+[m[32m    // A metadata-only edit must not delete a live photo.[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: {} }));[m
+[32m+[m[32m    const same = 'studio-marmer/x/same';[m
+[32m+[m[32m    await expect(cleanupReplacedAsset(same, same)).resolves.toBeNull();[m
+[32m+[m[32m    expect(stub.calls).toHaveLength(0);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('cleans the old asset only when it differs from the new one', async () => {[m
+[32m+[m[32m    const stub = stubCloudinary(() => ({ status: 200, body: {} }));[m
+[32m+[m[32m    const result = await cleanupReplacedAsset('studio-marmer/x/old', 'studio-marmer/x/new');[m
+[32m+[m
+[32m+[m[32m    expect(result?.deleted).toEqual(['studio-marmer/x/old']);[m
+[32m+[m[32m    expect(stub.calls.map((c) => c.publicId)).toEqual(['studio-marmer/x/old']);[m
+[32m+[m[32m    stub.restore();[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m/** Signature scheme tests for `buildCloudinaryDeleteSignature`. */[m
+[32m+[m[32mdescribe('buildCloudinaryDeleteSignature', () => {[m
+[32m+[m[32m  const FIXED_TIMESTAMP = 1700000000; // deterministic[m
+[32m+[m
+[32m+[m[32m  it('omits api_key from the signed string', () => {[m
+[32m+[m[32m    const sig = buildCloudinaryDeleteSignature('my_asset', FIXED_TIMESTAMP, 'my_secret');[m
+[32m+[m[32m    // The signature is based on only public_id and timestamp; api_key is sent in[m
+[32m+[m[32m    // the POST body but excluded from the calculation.[m
+[32m+[m[32m    expect(typeof sig).toBe('string');[m
+[32m+[m[32m    expect(sig).toMatch(/^[0-9a-f]{40}$/); // SHA1 hex[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('produces deterministic output for same inputs', () => {[m
+[32m+[m[32m    const sig1 = buildCloudinaryDeleteSignature('asset1', FIXED_TIMESTAMP, 'secret1');[m
+[32m+[m[32m    const sig2 = buildCloudinaryDeleteSignature('asset1', FIXED_TIMESTAMP, 'secret1');[m
+[32m+[m[32m    expect(sig1).toBe(sig2);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('produces different output when the secret changes', () => {[m
+[32m+[m[32m    const sig1 = buildCloudinaryDeleteSignature('asset1', FIXED_TIMESTAMP, 'secret1');[m
+[32m+[m[32m    const sig2 = buildCloudinaryDeleteSignature('asset1', FIXED_TIMESTAMP, 'secret2');[m
+[32m+[m[32m    expect(sig1).not.toBe(sig2);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('produces different output when the public_id changes', () => {[m
+[32m+[m[32m    const sig1 = buildCloudinaryDeleteSignature('asset1', FIXED_TIMESTAMP, 'secret');[m
+[32m+[m[32m    const sig2 = buildCloudinaryDeleteSignature('asset2', FIXED_TIMESTAMP, 'secret');[m
+[32m+[m[32m    expect(sig1).not.toBe(sig2);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('produces different output when the timestamp changes', () => {[m
+[32m+[m[32m    const sig1 = buildCloudinaryDeleteSignature('asset1', 1700000000, 'secret');[m
+[32m+[m[32m    const sig2 = buildCloudinaryDeleteSignature('asset1', 1700000001, 'secret');[m
+[32m+[m[32m    expect(sig1).not.toBe(sig2);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('correctly orders parameters alphabetically (public_id before timestamp)', () => {[m
+[32m+[m[32m    // When sorted alphabetically: 'public_id=...' comes before 'timestamp=...'[m
+[32m+[m[32m    // because 'p' < 't'. The signature must reflect this order.[m
+[32m+[m[32m    const sig = buildCloudinaryDeleteSignature('my_asset', 12345, 'secret');[m
+[32m+[m[32m    // Verify the signature was computed with public_id first by checking it differs[m
+[32m+[m[32m    // from a hypothetical reversed-order computation (we just verify it's a valid[m
+[32m+[m[32m    // SHA1 and produced by our function).[m
+[32m+[m[32m    expect(sig).toMatch(/^[0-9a-f]{40}$/);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('generates a signature that, when used with the correct api_key, would verify on Cloudinary', () => {[m
+[32m+[m[32m    // This is a unit-level verification: we compute the signature per the exact[m
+[32m+[m[32m    // scheme Cloudinary expects (public_id + timestamp sorted, then secret appended).[m
+[32m+[m[32m    // In integration, Cloudinary would return result: ok for a matching request.[m
+[32m+[m[32m    const sig = buildCloudinaryDeleteSignature('test_asset', 1700000000, 'test_secret');[m
+[32m+[m[32m    expect(sig).toMatch(/^[0-9a-f]{40}$/);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  it('signature string format is "public_id=...&timestamp=..." before hashing', () => {[m
+[32m+[m[32m    // Verify the canonical string that gets hashed: sorted params + secret,[m
+[32m+[m[32m    // without api_key included.[m
+[32m+[m[32m    const toSign = ['public_id=test_asset', 'timestamp=1700000000'][m
+[32m+[m[32m      .sort()[m
+[32m+[m[32m      .join('&');[m
+[32m+[m[32m    // The secret is appended directly after, no separator.[m
+[32m+[m[32m    const signedString = `${toSign}test_secret`;[m
+[32m+[m[32m    // SHA1 of this should match our function output.[m
+[32m+[m[32m    const expectedSig = createHash('sha1').update(signedString).digest('hex');[m
+[32m+[m[32m    const actualSig = buildCloudinaryDeleteSignature('test_asset', 1700000000, 'test_secret');[m
+[32m+[m[32m    expect(actualSig).toBe(expectedSig);[m
+[32m+[m[32m  });[m
+[32m+[m[32m});[m

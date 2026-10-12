@@ -14,6 +14,7 @@ import {
   toGalleryImageColumns,
   updateGalleryItemSchema,
 } from '@/lib/validation/gallery';
+import { cleanupUnreferencedAssets } from '@/lib/media-lifecycle';
 
 /**
  * Gallery mutations for the admin area.
@@ -223,12 +224,13 @@ export async function updateGalleryItem(
    * the follow-up warning about an orphaned Cloudinary asset fires on a genuine
    * replacement and never on a metadata-only edit.
    *
-   * Replacing a photo deliberately leaves the previous asset in Cloudinary.
-   * Deleting remote media needs a trusted server-side context this codebase does
-   * not have, and losing a photo the admin may still want is worse than leaving an
-   * unreferenced asset for a later cleanup pass.
+   * When the image is replaced or removed, the previous asset is orphaned. The
+   * database write commits first; only then is the old public id offered to the
+   * lifecycle helper, which re-checks references before deleting. A
+   * metadata-only edit submits the same public id, so nothing is cleaned.
    */
   const imageReplaced = data.imageUrl !== existing.imageUrl;
+  const previousPublicId = existing.publicId ?? null;
 
   try {
     const updated = await prisma.galleryImage.update({
@@ -243,6 +245,17 @@ export async function updateGalleryItem(
       },
       select: { id: true, title: true },
     });
+
+    // Clean up the old asset only after the commit succeeded.
+    if (previousPublicId && previousPublicId !== data.publicId) {
+      const cleanup = await cleanupUnreferencedAssets([previousPublicId]);
+      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+        console.warn(
+          `[media-lifecycle] gallery item ${id} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
+          cleanup.failed
+        );
+      }
+    }
 
     revalidateGalleryViews();
     revalidatePath(`/admin/galeri/${id}/edit`);
@@ -268,10 +281,9 @@ export async function updateGalleryItem(
  * confirm dialog can keep the dialog open and show the reason on failure, and
  * raise a toast on success.
  *
- * CLOUINARY ASSETS ARE NOT DELETED
- * This only removes the database row. The remote asset stays in the
- * `studio-marmer/gallery` media library for a later trusted cleanup pass,
- * exactly as replacing a photo behaves today.
+ * Once the row is gone its `public_id` is the only name the remote asset has, so
+ * it is read before the delete. The actual Cloudinary deletion runs after the
+ * commit succeeds, via lib/media-lifecycle.ts.
  */
 export async function deleteGalleryItem(
   id: number
@@ -290,7 +302,7 @@ export async function deleteGalleryItem(
   try {
     const existing = await prisma.galleryImage.findUnique({
       where: { id },
-      select: { title: true },
+      select: { title: true, publicId: true },
     });
 
     // A row that is already gone is treated as success: the admin asked for it to
@@ -300,6 +312,17 @@ export async function deleteGalleryItem(
     }
 
     await prisma.galleryImage.delete({ where: { id } });
+
+    // Clean up the orphaned asset only after the commit succeeded.
+    if (existing.publicId) {
+      const cleanup = await cleanupUnreferencedAssets([existing.publicId]);
+      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+        console.warn(
+          `[media-lifecycle] gallery item ${id} deleted, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
+          cleanup.failed
+        );
+      }
+    }
 
     revalidateGalleryViews();
 

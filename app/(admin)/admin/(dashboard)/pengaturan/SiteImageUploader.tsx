@@ -37,10 +37,9 @@ import { useToast } from '@/components/admin/ToastProvider';
  * empty strings. That is what lets an admin edit the WhatsApp number without
  * having to re-pick the logo.
  *
- * The Cloudinary asset itself is never deleted here. Removing an image only
- * unlinks it from the database; deleting remote media needs a trusted
- * server-side context this codebase deliberately does not have yet, and losing
- * an asset the admin may still want is worse than leaving one unreferenced.
+ * The Cloudinary asset itself is not deleted here — this component only writes
+ * the hidden form fields. The server action deletes the orphaned asset after the
+ * database commit succeeds, via lib/media-lifecycle.ts.
  */
 
 interface SiteImageUploaderProps {

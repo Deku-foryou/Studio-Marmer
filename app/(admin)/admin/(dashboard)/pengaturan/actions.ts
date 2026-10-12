@@ -12,6 +12,7 @@ import {
 } from '@/lib/data/admin/site';
 import { siteSettingsSchema } from '@/lib/validation/site-settings';
 import { ADMIN_TOASTS } from '@/lib/admin/toast';
+import { cleanupUnreferencedAssets } from '@/lib/media-lifecycle';
 
 /**
  * Site settings mutation for the admin area.
@@ -130,8 +131,37 @@ export async function updateSiteSettings(
      */
     const previous = await getAdminSiteSettings();
     const previousHeroImageUrl = previous.settings?.heroImageUrl ?? null;
+    const previousLogoPublicId = previous.settings?.logoPublicId ?? null;
+    const previousHeroPublicId = previous.settings?.heroImagePublicId ?? null;
 
     await updateAdminSiteSettings(parsed.data);
+
+    /*
+     * CLOUDINARY CLEANUP — AFTER THE COMMIT
+     *
+     * Replacing or clearing the logo/hero orphans the previous asset. Each old
+     * public id is offered to the lifecycle helper only after the database write
+     * succeeded; the helper re-checks references before any network call, so an
+     * asset still used elsewhere is kept. A save that leaves both images alone
+     * submits the same public ids, so nothing is cleaned.
+     */
+    const orphaned: string[] = [];
+    if (previousLogoPublicId && previousLogoPublicId !== parsed.data.logoPublicId) {
+      orphaned.push(previousLogoPublicId);
+    }
+    if (previousHeroPublicId && previousHeroPublicId !== parsed.data.heroImagePublicId) {
+      orphaned.push(previousHeroPublicId);
+    }
+
+    if (orphaned.length > 0) {
+      const cleanup = await cleanupUnreferencedAssets(orphaned);
+      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+        console.warn(
+          '[media-lifecycle] settings saved, but asset(s) need manual cleanup:',
+          cleanup.failed
+        );
+      }
+    }
 
     // The storefront reads settings in the root store layout, the hero, the
     // navbar/footer and the contact page, so the whole storefront tree plus the
@@ -174,12 +204,9 @@ export async function updateSiteSettings(
  * It is idempotent and races safely: the two columns are nulled by id, so a
  * double-click cannot blank anything but the logo.
  *
- * CLOUINARY ASSETS ARE NOT DELETED
- * This only unlinks the reference. Deleting the remote asset would need the API
- * secret, which must never reach a client bundle or this file, and would be
- * irreversible if the admin wanted the logo back. The orphaned asset stays in the
- * `studio-marmer/site` media library for a later trusted cleanup pass, exactly
- * as replacing an image behaves today.
+ * Once the columns are null the old `public_id` is the only name the remote asset
+ * has, so it is read before the clear. The actual Cloudinary deletion runs after
+ * the commit succeeds, via lib/media-lifecycle.ts.
  *
  * No `heroImage*` column is touched: removing the logo must not disturb the hero
  * photograph, and vice versa.
@@ -193,7 +220,23 @@ export async function removeSiteLogo(): Promise<SiteSettingsFormState> {
   }
 
   try {
+    // Read the current logo public id BEFORE clearing: after the update the
+    // column is null and the remote asset could no longer be named.
+    const before = await getAdminSiteSettings();
+    const logoPublicId = before.settings?.logoPublicId ?? null;
+
     await clearAdminSiteLogo(SITE_SETTINGS_ID);
+
+    // Clean up the orphaned asset only after the commit succeeded.
+    if (logoPublicId) {
+      const cleanup = await cleanupUnreferencedAssets([logoPublicId]);
+      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+        console.warn(
+          '[media-lifecycle] logo removed, but asset(s) need manual cleanup:',
+          cleanup.failed
+        );
+      }
+    }
 
     revalidatePath('/', 'layout');
     revalidatePath('/admin/pengaturan');

@@ -142,10 +142,8 @@ export async function clearAdminSiteLogo(id: number): Promise<void> {
  * The submitted media fields are authoritative. Keeping an image is just the
  * uploader re-submitting the values it already holds, and removing it is
  * submitting blanks, so there is no separate "unchanged" case to special-case.
- * Replacing an image leaves the previous Cloudinary asset in place: deleting
- * remote media needs a trusted server-side context this codebase does not have
- * yet, and losing an asset the admin may still want is worse than leaving one
- * unreferenced for a later cleanup pass.
+ * Replacing or clearing an image orphans the previous Cloudinary asset; the
+ * server action calls lib/media-lifecycle.ts after committing to delete it.
  */
 export async function updateAdminSiteSettings(
   input: SiteSettingsInput
