@@ -1,18 +1,20 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 
-import { authConfig, isAdminRole, type AdminRole } from '@/auth.config';
+import { authConfig, isAdminRole } from '@/auth.config';
 import { prisma } from '@/lib/db/prisma';
-import { verifyPassword } from '@/lib/db/password';
-import {
-  checkRateLimit,
-  recordFailedAttempt,
-  resetAttempts,
-} from '@/lib/auth/rate-limiter';
+import { authorizeAdminCredentials } from '@/lib/auth/credentials';
 
-const DUMMY_PASSWORD_HASH =
-  'scrypt$16384$8$1$1sa1swtUP5SKjELWJ2zPZQ==$UqgG+6qfbC2p51tFPQEklmHqSvdbVeUesHmeUDRmozSBSZIjzteJ4lctRpm8FGtqkKjdxrXo0bK6E5+StHYPzQ==';
-
+/**
+ * The credential check itself lives in `lib/auth/credentials.ts`.
+ *
+ * It was moved out of this file because the callback below is only reachable
+ * once Auth.js has booted - importing `auth.ts` from a unit test fails on
+ * `next-auth/lib/env.js` requiring `next/server`, which left the most
+ * security-critical function in the project with no automated coverage at all.
+ * The extracted module takes the user lookup as an argument; this file supplies
+ * the real Prisma one, so production behaviour is unchanged.
+ */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
 
@@ -26,67 +28,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
 
       async authorize(credentials, request) {
-        const email =
-          typeof credentials?.email === 'string'
-            ? credentials.email.trim().toLowerCase()
-            : '';
-        const password =
-          typeof credentials?.password === 'string' ? credentials.password : '';
-
-        if (!email || !password) {
-          return null;
-        }
-
-        const req = request as Request | undefined;
-
-        if (req) {
-          const rateLimit = checkRateLimit(req, email);
-
-          if (!rateLimit.allowed) {
-            return null;
-          }
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            passwordHash: true,
-            role: true,
-          },
+        return authorizeAdminCredentials(credentials, {
+          request: request as Request | undefined,
+          findUser: async (email) =>
+            prisma.user.findUnique({
+              where: { email },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                passwordHash: true,
+                role: true,
+              },
+            }),
         });
-
-        if (!user) {
-          await verifyPassword(password, DUMMY_PASSWORD_HASH);
-          if (req) recordFailedAttempt(req, email);
-          return null;
-        }
-
-        const passwordIsValid = await verifyPassword(
-          password,
-          user.passwordHash
-        );
-
-        if (!passwordIsValid) {
-          if (req) recordFailedAttempt(req, email);
-          return null;
-        }
-
-        if (!isAdminRole(user.role)) {
-          if (req) recordFailedAttempt(req, email);
-          return null;
-        }
-
-        if (req) resetAttempts(req, email);
-
-        return {
-          id: String(user.id),
-          name: user.name,
-          email: user.email,
-          role: user.role as AdminRole,
-        };
       },
     }),
   ],
