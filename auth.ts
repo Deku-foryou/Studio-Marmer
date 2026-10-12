@@ -4,21 +4,12 @@ import Credentials from 'next-auth/providers/credentials';
 import { authConfig, isAdminRole, type AdminRole } from '@/auth.config';
 import { prisma } from '@/lib/db/prisma';
 import { verifyPassword } from '@/lib/db/password';
+import {
+  checkRateLimit,
+  recordFailedAttempt,
+  resetAttempts,
+} from '@/lib/auth/rate-limiter';
 
-/**
- * Full Auth.js setup — the only module that performs authentication work
- * against the database. Safe to import from Server Components, Route Handlers
- * and `proxy.ts` (via the exported `auth` wrapper); it must never be imported
- * into a Client Component.
- */
-
-/**
- * A valid scrypt hash of a throwaway value.
- *
- * When an email does not exist we still run a verification against this hash so
- * that a missing account and a wrong password take the same amount of time.
- * Without it, response timing would reveal which emails are registered.
- */
 const DUMMY_PASSWORD_HASH =
   'scrypt$16384$8$1$1sa1swtUP5SKjELWJ2zPZQ==$UqgG+6qfbC2p51tFPQEklmHqSvdbVeUesHmeUDRmozSBSZIjzteJ4lctRpm8FGtqkKjdxrXo0bK6E5+StHYPzQ==';
 
@@ -34,17 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: 'Password', type: 'password' },
       },
 
-      /**
-       * Returns the user on success, or `null` on any failure.
-       *
-       * Every failure path returns `null`, which Auth.js surfaces as the single
-       * generic `CredentialsSignin` error. The caller therefore cannot tell
-       * whether the email is unknown, the password is wrong, or the account
-       * lacks an allowed role.
-       *
-       * Neither the password nor the stored hash is ever logged or returned.
-       */
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const email =
           typeof credentials?.email === 'string'
             ? credentials.email.trim().toLowerCase()
@@ -54,6 +35,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!email || !password) {
           return null;
+        }
+
+        const req = request as Request | undefined;
+
+        if (req) {
+          const rateLimit = checkRateLimit(req, email);
+
+          if (!rateLimit.allowed) {
+            return null;
+          }
         }
 
         const user = await prisma.user.findUnique({
@@ -68,8 +59,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!user) {
-          // Equalise timing against the "wrong password" path.
           await verifyPassword(password, DUMMY_PASSWORD_HASH);
+          if (req) recordFailedAttempt(req, email);
           return null;
         }
 
@@ -79,17 +70,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
 
         if (!passwordIsValid) {
+          if (req) recordFailedAttempt(req, email);
           return null;
         }
 
-        // Guard the role centrally. The enum only allows ADMIN | EDITOR today,
-        // but this keeps the check explicit if the model ever changes.
         if (!isAdminRole(user.role)) {
+          if (req) recordFailedAttempt(req, email);
           return null;
         }
 
-        // Only these fields are handed to Auth.js. `passwordHash` stays server
-        // side and is never returned.
+        if (req) resetAttempts(req, email);
+
         return {
           id: String(user.id),
           name: user.name,
@@ -101,10 +92,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    /**
-     * Copies the identity from the sign-in payload into the JWT on first issue,
-     * then relies on the token on subsequent requests.
-     */
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -115,14 +102,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
 
-    /**
-     * Projects only the safe identity fields onto `session.user`.
-     * `passwordHash` and the JWT itself are never exposed.
-     */
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id ?? '';
-        session.user.role = isAdminRole(token.role) ? token.role : 'ADMIN';
+        if (isAdminRole(token.role)) {
+          session.user.role = token.role;
+        }
         if (token.name) session.user.name = token.name;
         if (token.email) session.user.email = token.email;
       }

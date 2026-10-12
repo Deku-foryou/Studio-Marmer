@@ -14,8 +14,8 @@ declare module 'next-auth' {
     user: {
       /** Stringified `users.id`. */
       id: string;
-      /** Role taken from the `users.role` enum. */
-      role: AdminRole;
+      /** Role taken from the `users.role` enum. `undefined` when the token carries an invalid role. */
+      role: AdminRole | undefined;
     } & DefaultSession['user'];
   }
 

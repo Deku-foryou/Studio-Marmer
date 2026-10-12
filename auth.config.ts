@@ -50,5 +50,5 @@ export const authConfig = {
 
   providers: [],
 
-  trustHost: true,
+  trustHost: process.env.AUTH_TRUST_HOST !== 'false',
 } satisfies NextAuthConfig;
