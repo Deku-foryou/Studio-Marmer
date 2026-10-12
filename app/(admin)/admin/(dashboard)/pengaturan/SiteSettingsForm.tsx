@@ -481,7 +481,7 @@ maxLength={500}
 maxLength={200}
                 value={values.heroTitle}
                 onChange={(e) => setValue('heroTitle', e.target.value)}
-                placeholder="Keindahan Marmer, Dibentuk untuk Setiap Ruang."
+                placeholder="Marmer, diolah menjadi benda sehari-hari."
               className={FIELD_CLASS}
               aria-invalid={Boolean(fieldErrors.heroTitle)}
             />

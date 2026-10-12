@@ -4,49 +4,58 @@ import { BRAND } from '@/lib/brand';
 export const metadata: Metadata = {
   title: `Tentang Kami — ${BRAND.name}`,
   description:
-    'Studio Marmer mengukir potongan marmer menjadi benda yang dipakai setiap hari, dengan menghormati karakter alami setiap batu.',
+    'Studio Marmer mengolah marmer menjadi tempat tisu, tempat sabun, nampan, dan vas kecil. Setiap potongan punya corak dan warna yang berbeda.',
   alternates: { canonical: '/tentang-kami' },
 };
 
+/**
+ * Practical facts, deliberately NOT the same four points as the homepage's
+ * about strip. Repeating those verbatim on a second page made the same
+ * sentence appear twice in one short visit.
+ *
+ * Every line below states something the site can actually show or do: the
+ * product fields that exist, and the two channels that are wired up. Nothing
+ * here promises delivery time, custom work, or a guarantee.
+ */
 const PRINSIP = [
   {
-    title: 'Bahan pilihan',
-    body: 'Hanya mengambil blok yang uratnya terbaca jelas saat dipahat.',
+    title: 'Jenis marmer',
+    body: 'Setiap produk mencantumkan jenis marmer yang dipakai.',
   },
   {
-    title: 'Pengerjaan tangan',
-    body: 'Pemahatan dan pengasahan dilakukan satu per satu tanpa mesin.',
+    title: 'Ukuran',
+    body: 'Dimensi dan berat tercantum pada halaman produk.',
   },
   {
-    title: 'Jujur soal corak',
-    body: 'Menjelaskan perbedaan antar satuan, bukan menyembunyikannya.',
+    title: 'Pembelian',
+    body: 'Pembelian diproses melalui Shopee.',
   },
   {
-    title: 'Pembelian transparan',
-    body: 'Transaksi diproses di Shopee dengan status yang bisa dilacak.',
+    title: 'Pertanyaan',
+    body: 'Sertakan nama produk agar kami bisa menjawab dengan tepat.',
   },
 ] as const;
 
 const PROSES = [
   {
     nomor: '01',
-    judul: 'Pilih blok',
-    detail: 'Menyisipkan blok dan mencari arah urat terbaik.',
+    judul: 'Pemilihan Batu',
+    detail: 'Menentukan Batu marmer dengan corak yang sesuai.',
   },
   {
     nomor: '02',
-    judul: 'Pahat',
-    detail: 'Bentuk kasar dikerjakan dengan pahat.',
+    judul: 'Pembentukan',
+    detail: 'Marmer dipotong dan dibentuk sesuai ukuran.',
   },
   {
     nomor: '03',
-    judul: 'Asah',
-    detail: 'Permukaan dibulatkan dan tepi dihaluskan.',
+    judul: 'Pemolesan',
+    detail: 'Permukaan dan tepian dirapikan.',
   },
   {
     nomor: '04',
-    judul: 'Detail',
-    detail: 'Pengeboran dan lekukan akhir sesuai fungsi.',
+    judul: 'Quality Check',
+    detail: 'Bentuk dan detail diperiksa sebelum produk siap digunakan.',
   },
 ] as const;
 
@@ -59,7 +68,7 @@ export default function AboutPage() {
           Tentang Kami
         </span>
         <h1 className="text-[clamp(2rem,4.5vw,3.4rem)] font-light leading-[1.12] tracking-tight text-[#1A1A1A] max-w-3xl">
-          Sebuah studio kecil yang dikerjakan dengan tangan.
+          Kami mengolah marmer menjadi sebuah Maha Karya.
         </h1>
       </section>
 
@@ -68,32 +77,28 @@ export default function AboutPage() {
         <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-14 sm:py-20 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
           <div className="lg:col-span-7 space-y-5">
             <h2 className="text-xl sm:text-2xl font-light text-[#1A1A1A] tracking-tight">
-              Kenapa marmer?
+              Yang kami suka dari marmer
             </h2>
             <p className="text-sm text-[#666666] leading-relaxed font-light">
-              Marmer adalah bahan yang langsung terasa saat disentuh: dingin,
-              berat, dan punya pola yang tidak pernah terulang. Dua potongan dari
-              blok yang sama pun akan terlihat berbeda setelah dipahat. Bagi
-              kami, itu alasan utama memilih marmer untuk kerajinan tangan.
+              Daya Tarik Marmer
+              Corak dan warna marmer terbentuk murni oleh alam. Itulah mengapa setiap potongan punya karakter unik, tidak ada dua barang yang coraknya 100% sama persis.
             </p>
             <p className="text-sm text-[#666666] leading-relaxed font-light">
-              Kami membuat benda yang benar-benar dipakai setiap hari: tempat
-              tisu di meja ruang tamu, tempat soap di dekat wastafel, nampan
-              kecil di atas meja. Benda yang sering disentuh akan makin menarik
-              seiring waktu.
+              Kami membuat berbagai benda yang digunakan sehari-hari, seperti
+              tempat tisu, tempat sabun, dan nampan kecil. Bentuknya dibuat
+              sesuai fungsi, sementara corak batunya tetap menjadi bagian dari
+              tampilan produk.
             </p>
             <p className="text-sm text-[#666666] leading-relaxed font-light">
-              Karena setiap satuan berbeda, foto di katalog ini adalah contoh
-              bentuk dan karakter batunya, bukan foto persis barang yang akan
-              Anda terima. Untuk melihat corak satu satuan tertentu, silakan
-              minta foto tambahan lewat WhatsApp.
+              Foto di katalog menunjukkan contoh bentuk dan corak. Tampilan batu
+              pada produk yang tersedia bisa sedikit berbeda dari foto.
             </p>
           </div>
 
           <aside className="lg:col-span-5">
             <div className="border border-[#E5E1DA] bg-[#FBF9F6] p-6 sm:p-7">
               <h3 className="text-[10px] uppercase tracking-[0.2em] text-[#8B7355] font-medium mb-5">
-                Prinsip kerja
+                Yang perlu diketahui
               </h3>
               <ul className="space-y-4">
                 {PRINSIP.map((item) => (
@@ -118,7 +123,7 @@ export default function AboutPage() {
           Proses
         </span>
         <h2 className="text-xl sm:text-2xl font-light text-[#1A1A1A] tracking-tight mb-8 sm:mb-10">
-          Dari blok menjadi benda
+          Dari batu hingga siap digunakan
         </h2>
 
         <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-[#E5E1DA] border border-[#E5E1DA]">

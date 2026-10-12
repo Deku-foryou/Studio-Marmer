@@ -56,7 +56,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             className="absolute inset-0 flex items-center justify-center"
           >
             <span className="text-[9px] uppercase tracking-[0.2em] text-[#C9C4BC]">
-              Foto forthcoming
+              Belum ada foto
             </span>
           </div>
         )}

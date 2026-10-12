@@ -16,7 +16,7 @@ interface WhatsAppCtaProps {
 export default function WhatsAppCta({ settings }: WhatsAppCtaProps) {
   const href = buildWhatsAppLink(
     settings.whatsappNumber,
-    'Halo Studio Marmer, saya ingin menanyakan koleksi marmer yang tersedia.'
+    'Halo Studio Marmer, saya ingin menanyakan produk yang tersedia.'
   );
 
   if (!href) return null;
@@ -28,18 +28,17 @@ export default function WhatsAppCta({ settings }: WhatsAppCtaProps) {
     >
       <div className="border border-[#E5E1DA] bg-white px-6 sm:px-12 py-12 sm:py-16 text-center">
         <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-3">
-          Konsultasi
+          Pertanyaan Produk
         </span>
         <h2
           id="cta-heading"
           className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight max-w-2xl mx-auto mb-4"
         >
-          Ingin tahu detail material atau ketersediaan sebuah karya?
+          Ingin tahu ukuran atau ketersediaan produk?
         </h2>
         <p className="text-sm text-[#666666] leading-relaxed max-w-lg mx-auto font-light mb-8">
-          Hubungi kami langsung. Setiap potong marmer memiliki corak dan tekstur
-          yang berbeda, sehingga detail setiap produk bisa kami jelaskan satu per
-          satu.
+          Tanyakan langsung melalui WhatsApp. Kami akan membantu menjelaskan
+          detail produk dan pilihan yang tersedia.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -50,7 +49,7 @@ export default function WhatsAppCta({ settings }: WhatsAppCtaProps) {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-[#1A1A1A] text-white px-8 py-4 text-[11px] uppercase tracking-[0.16em] font-medium hover:bg-[#333333] transition-colors duration-300"
           >
             <MessageCircle size={14} strokeWidth={1.5} />
-            Pesan via WhatsApp
+            Tanya via WhatsApp
           </a>
           <Link
             href="/kontak"

@@ -56,7 +56,7 @@ export default function ProductImageGallery({
             className="absolute inset-0 flex items-center justify-center"
           >
             <span className="text-[10px] uppercase tracking-[0.2em] text-[#C9C4BC]">
-              Foto forthcoming
+              Belum ada foto
             </span>
           </div>
         )}

@@ -42,12 +42,12 @@ export default async function ContactPage() {
           Kontak
         </span>
         <h1 className="text-[clamp(2rem,4.5vw,3.4rem)] font-light leading-[1.12] tracking-tight text-[#1A1A1A] max-w-3xl">
-          Mari bicara.
+          Ada yang ingin ditanyakan?
         </h1>
         <p className="text-sm text-[#666666] leading-relaxed font-light max-w-xl mt-4">
-          Untuk pertanyaan soal ukuran, jenis marmer, atau ketersediaan satu
-          satuan, silakan hubungi kami. Ceritakan sedikit kebutuhan Anda agar
-          kami bisa menyarankan karya yang paling sesuai.
+          Untuk informasi ukuran, harga, bahan, atau ketersediaan produk,
+          silakan hubungi kami. Sertakan produk yang ingin Anda ketahui agar kami
+          bisa membantu dengan lebih tepat.
         </p>
       </section>
 
@@ -143,7 +143,7 @@ export default async function ContactPage() {
             ) : (
               <div className="border border-[#E5E1DA] bg-white px-6 py-10 text-center">
                 <p className="text-sm text-[#666666] font-light mb-1">
-                  Informasi kontak belum dikonfigurasi.
+                  Informasi kontak belum tersedia.
                 </p>
                 <p className="text-xs text-[#999999] font-light">
                   Silakan kembali lagi nanti.

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     template: '%s',
   },
   description:
-    'Studio Marmer mengukir potongan marmer menjadi benda yang dipakai setiap hari, dengan menghormati karakter alami setiap batu.',
+    'Studio Marmer mengolah marmer menjadi tempat tisu, tempat sabun, holder, nampan, dan vas kecil.',
   keywords: [
     'kerajinan marmer',
     'marmer handmade',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Studio Marmer — Kerajinan Marmer',
     description:
-      'Koleksi kerajinan marmer dengan karakter alami, dibuat untuk menghadirkan sentuhan elegan pada ruang Anda.',
+      'Tempat tisu, tempat sabun, holder, nampan, dan vas kecil dari marmer pilihan.',
     type: 'website',
     locale: 'id_ID',
     siteName: 'Studio Marmer',

@@ -86,22 +86,20 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               id="tentang-heading"
               className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight leading-snug mb-5"
             >
-              Marmer tidak pernah sama satu pun.
+              Setiap potong marmer mempunyai corak yang berbeda.
             </h2>
             <p className="text-sm text-[#666666] leading-relaxed font-light mb-4">
-              Studio Marmer mengukir potongan marmer menjadi benda yang dipakai
-              setiap hari: tempat tisu, tempat sabun, holder, nampan, dan vas
-              kecil untuk sudut ruangan.
+              Di Studio Marmer, kami mengolah marmer menjadi benda yang dekat
+              dengan keseharian anda: tempat tisu, tempat sabun, holder,
+              vas kecil, dll
             </p>
             <p className="text-sm text-[#666666] leading-relaxed font-light mb-4">
-              Karena berasal dari alam, setiap satuan punya urat, warna, dan
-              keebalan yang berbeda. Kami memperlakukan perbedaan itu sebagai
-              ciri, bukan cacat.
+              Corak dan warna marmer tidak selalu sama. Karena itu, tampilan
+              setiap produk bisa sedikit berbeda, bahkan pada model yang sama.
             </p>
             <p className="text-sm text-[#666666] leading-relaxed font-light">
-              Untuk pertanyaan detail, ukuran, atau ketersediaan satuan
-              tertentu, silakan hubungi kami. Jawaban biasanya diberikan pada hari yang
-              sama.
+              Ada ukuran atau produk tertentu yang sedang dicari? Hubungi kami
+              untuk menanyakan pilihan yang tersedia.
             </p>
           </div>
 
@@ -109,19 +107,19 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             {[
               {
                 title: 'Bahan',
-                body: 'Marmer pilihan sesuai karakter tiap karya.',
+                body: 'Batu dipilih sesuai bentuk dan kebutuhan produk.',
               },
               {
-                title: 'Teknik',
-                body: 'Dipahat, diasah, dan dibulatkan dengan tangan.',
+                title: 'Pengerjaan',
+                body: 'Dipotong, dibentuk, dan dihaluskan dengan teliti.',
               },
               {
-                title: 'Fungsi',
-                body: 'Objek harian yang dibuat agar tahan lama.',
+                title: 'Kegunaan',
+                body: 'Dibuat untuk menemani aktivitas sehari-hari.',
               },
               {
-                title: 'Karakter',
-                body: 'Motif alami tidak pernah sama antar satuan.',
+                title: 'Corak Batu',
+                body: 'Pola alami membuat setiap potongan terlihat berbeda.',
               },
             ].map((item) => (
               <div key={item.title} className="bg-white px-5 py-6">
@@ -149,8 +147,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                 Semua Produk
               </h2>
               <p className="text-[#666666] text-sm max-w-md font-light">
-                Telusuri seluruh karya yang tersedia. Gunakan pencarian dan filter
-                untuk mempersempit pilihan.
+                Telusuri produk yang tersedia. Gunakan pencarian dan filter untuk
+                mempersempit pilihan.
               </p>
             </div>
 

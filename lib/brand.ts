@@ -13,7 +13,7 @@ export const BRAND = {
   nameBottom: 'Marmer',
   tagline: 'Kerajinan Marmer',
   description:
-    'Studio kerajinan marmer dengan karakter alami, dibuat untuk menghadirkan sentuhan elegan pada setiap ruang.',
+   'Kami mengubah Marmer menjadi sebuah Maha Karya.',
 } as const;
 
 /** Primary customer-facing navigation. Order matters in the desktop bar. */

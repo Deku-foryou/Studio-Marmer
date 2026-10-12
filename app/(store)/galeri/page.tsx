@@ -8,7 +8,7 @@ import WhatsAppCta from '@/components/sections/WhatsAppCta';
 export const metadata: Metadata = {
   title: `Galeri — ${BRAND.name}`,
   description:
-    'Kumpulan karya kerajinan marmer: tempat tisu, tempat soap, holder, nampan, coaster, dan vas.',
+    'Berbagai produk dan detail marmer yang dikerjakan Studio Marmer, termasuk tempat tisu, tempat sabun, holder, nampan, coaster, dan vas.',
   alternates: { canonical: '/galeri' },
 };
 
@@ -39,11 +39,11 @@ export default async function GalleryPage() {
           Galeri
         </span>
         <h1 className="text-[clamp(2rem,4.5vw,3.4rem)] font-light leading-[1.12] tracking-tight text-[#1A1A1A] max-w-3xl mb-4">
-          Bentuk, tekstur, dan warna.
+          Eksplor seluruh karya Studio Marmer.
         </h1>
         <p className="text-sm text-[#666666] leading-relaxed font-light max-w-xl">
-          Potongan marmer yang dipahat satu per satu. Karena berasal dari alam,
-          setiap karya punya urat dan warna yang tidak pernah sama.
+          Berbagai produk dan detail marmer yang kami kerjakan. Lihat perbedaan
+          corak, warna, dan hasil akhir tiap produk.
         </p>
       </section>
 
@@ -54,8 +54,8 @@ export default async function GalleryPage() {
               Galeri sedang diisi.
             </p>
             <p className="text-xs text-[#999999] font-light max-w-md mx-auto leading-relaxed">
-              Foto karya terbaru akan tampil di sini. Sementara itu, silakan
-              hubungi kami untuk menanyakan collections yang tersedia.
+              Foto terbaru akan tampil di sini. Sementara itu, silakan hubungi
+              kami untuk menanyakan produk yang tersedia.
             </p>
           </div>
         </section>

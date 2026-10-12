@@ -84,15 +84,15 @@ export default function HeroSection({ settings }: HeroSectionProps) {
         <div className="relative w-full max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pt-14 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
           <div className="max-w-xl lg:max-w-2xl">
             <p className="text-[10px] uppercase tracking-[0.28em] text-[#8B7355] font-medium mb-6 animate-fade-up">
-              Kerajinan Marmer
+              Marble Store - Studio Marmer Collection
             </p>
 
             <h1 className="text-[clamp(2rem,5.5vw,4.2rem)] font-light leading-[1.12] tracking-tight text-[#1A1A1A] mb-6 animate-fade-up">
               {headline ?? (
                 <>
-                  Keindahan Marmer
+                  Keindahan batu alam,
                   <br />
-                  <span className="font-medium">Dibentuk untuk Setiap Ruang.</span>
+                  <span className="font-medium">Dibentuk dengan Ketelitian.</span>
                 </>
               )}
             </h1>
@@ -107,7 +107,7 @@ export default function HeroSection({ settings }: HeroSectionProps) {
             */}
             <p className="text-base sm:text-lg text-[#3A3A3A] sm:text-[#666666] leading-relaxed max-w-md mb-10 font-light animate-fade-up">
               {subline ??
-                'Temukan koleksi kerajinan marmer dengan karakter alami, dibuat untuk menghadirkan sentuhan elegan pada ruang Anda.'}
+                'Dari tempat sabun hingga nampan kecil, kami membuat berbagai kerajinan marmer dengan tetap memperlihatkan corak alami batunya.'}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fade-up">
@@ -115,7 +115,7 @@ export default function HeroSection({ settings }: HeroSectionProps) {
                 href="/#katalog"
                 className="bg-[#1A1A1A] text-white hover:bg-[#333333] transition-all duration-300 inline-flex items-center justify-center gap-3 px-7 sm:px-8 py-3.5 text-[11px] uppercase tracking-[0.16em] font-medium"
               >
-                Lihat Koleksi
+                Lihat Produk
                 <ArrowRight size={14} strokeWidth={1.5} />
               </Link>
 

@@ -72,7 +72,7 @@ export default function ProductGrid({
             <p className="text-sm text-[#666666] font-light">
               {hasActiveFilters
                 ? 'Coba ubah kata kunci pencarian atau filter yang dipilih.'
-                : 'Belum ada karya yang dipublikasikan. Silakan hubungi kami untuk menanyakan ketersediaan.'}
+                : 'Belum ada produk yang dipublikasikan. Silakan hubungi kami untuk menanyakan ketersediaan.'}
             </p>
           </div>
         </div>
