@@ -12,6 +12,10 @@ import {
   IDLE_STATE,
   type ProductFormState,
 } from '@/lib/validation/product-action-state';
+import {
+  MAX_PRODUCT_ROWS,
+  SPECIFICATIONS_LIMIT_HINT,
+} from '@/lib/validation/product-rows';
 import { useToast } from '@/components/admin/ToastProvider';
 import { useFieldEpoch } from '@/components/admin/useFieldEpoch';
 import { ADMIN_TOASTS } from '@/lib/admin/toast';
@@ -190,6 +194,14 @@ export function ProductForm({ categories, product }: ProductFormProps) {
   const epoch = useFieldEpoch(state, IDLE_STATE);
 
   const fieldErrors = state.fieldErrors ?? {};
+
+  /**
+   * True once the admin has filled the form to the server's row cap.
+   *
+   * Derived rather than stored: `specs` is the single source of truth, so this
+   * cannot drift out of step with the list it describes.
+   */
+  const specsAtLimit = specs.length >= MAX_PRODUCT_ROWS;
 
   /**
    * Raise a toast exactly once per action result.
@@ -636,12 +648,31 @@ export function ProductForm({ categories, product }: ProductFormProps) {
 
         <button
           type="button"
-          onClick={() => setSpecs((prev) => [...prev, { label: '', value: '' }])}
-          className="mt-3 inline-flex items-center gap-1.5 border border-[#E5E1DA] px-3.5 py-2 text-[10px] uppercase tracking-[0.14em] text-[#1A1A1A] hover:bg-[#FBF9F6] transition-colors"
+          onClick={() =>
+            setSpecs((prev) =>
+              // Guarded in the updater, not only on the disabled attribute:
+              // the attribute stops a click, this stops any other path into the
+              // state. The server rejects row 27 either way, so letting the list
+              // grow past the cap would only produce a rejected save.
+              prev.length >= MAX_PRODUCT_ROWS
+                ? prev
+                : [...prev, { label: '', value: '' }]
+            )
+          }
+          disabled={specsAtLimit}
+          aria-disabled={specsAtLimit}
+          className="mt-3 inline-flex items-center gap-1.5 border border-[#E5E1DA] px-3.5 py-2 text-[10px] uppercase tracking-[0.14em] text-[#1A1A1A] hover:bg-[#FBF9F6] transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white"
         >
           <Plus size={12} strokeWidth={1.5} aria-hidden="true" />
           Tambah Baris
         </button>
+
+        {specsAtLimit && (
+          <p className="mt-2 text-[10px] text-[#666666] leading-relaxed">
+            {SPECIFICATIONS_LIMIT_HINT}
+          </p>
+        )}
+
         <FieldError message={fieldErrors.specifications} />
       </section>
 

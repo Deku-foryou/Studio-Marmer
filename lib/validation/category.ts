@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isAllowedMediaUrl } from '@/lib/validation/media-url';
+
 /** Trimmed string, or `undefined` when the admin left the field blank. */
 const optionalText = (max: number) =>
   z
@@ -9,14 +11,20 @@ const optionalText = (max: number) =>
     .transform((value) => (value.length === 0 ? undefined : value))
     .optional();
 
-/** Optional URL string – accepts relative paths, http(s) URLs, or `undefined`. */
+/**
+ * Optional image URL – accepts an absolute http(s) URL or a root-relative path.
+ *
+ * Uses the shared media-URL validator rather than a `^https?://` regex: the
+ * regex only anchored the prefix, so `http://` — a scheme with no host at all —
+ * passed as valid. See lib/validation/media-url.ts for the full contract.
+ */
 const optionalUrl = z
   .string()
   .trim()
   .max(500, `Maksimal 500 karakter.`)
   .transform((value) => (value.length === 0 ? undefined : value))
   .refine(
-    (val) => val === undefined || /^https?:\/\//i.test(val) || val.startsWith('/'),
+    (val) => val === undefined || isAllowedMediaUrl(val),
     'URL tidak valid.'
   )
   .optional();

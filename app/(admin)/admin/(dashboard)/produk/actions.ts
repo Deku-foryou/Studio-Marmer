@@ -16,7 +16,14 @@ import {
   createProductSchema,
   specificationsToJson,
   updateProductSchema,
+  type CreateProductInput,
+  type UpdateProductInput,
 } from '@/lib/validation/product';
+import {
+  findRowOverflow,
+  MAX_PRODUCT_ROWS,
+  overflowFieldErrors,
+} from '@/lib/validation/product-rows';
 import type { ProductFormState } from '@/lib/validation/product-action-state';
 import { buildFlashHref } from '@/lib/admin/toast';
 
@@ -74,6 +81,17 @@ function toFieldErrors(error: {
  * Reads the structured spec/image row inputs produced by the form.
  * The form serialises each repeatable row as indexed keys:
  *   spec_0_label, spec_0_value, image_0_url, image_0_alt, ...
+ *
+ * ROWS BEYOND THE LIMIT
+ * The loops below read indices `0 … MAX_PRODUCT_ROWS - 1` and stop. A crafted or
+ * stale submission carrying a further row is therefore TRUNCATED here, before
+ * Zod runs: the schema's `.max()` would receive exactly 26 items and pass, and
+ * the extra row would disappear with no error at all — the admin would believe
+ * their 27th photo was saved.
+ *
+ * `findRowOverflow` closes that gap by inspecting the submitted keys once, so
+ * the caller can reject the submission instead of quietly dropping data. The
+ * two are deliberately paired: neither is sufficient alone.
  */
 function readFormData(formData: FormData) {
   const getString = (key: string): string => {
@@ -81,13 +99,15 @@ function readFormData(formData: FormData) {
     return typeof value === 'string' ? value : '';
   };
 
+  const lastIndex = MAX_PRODUCT_ROWS - 1;
+
   const specifications: { label: string; value: string }[] = [];
   for (let i = 0; ; i += 1) {
     const label = getString(`spec_${i}_label`);
     const value = getString(`spec_${i}_value`);
-    if (!label && !value && i > 24) break;
+    if (!label && !value && i > lastIndex) break;
     specifications.push({ label, value });
-    if (i > 24) break;
+    if (i > lastIndex) break;
   }
 
   /**
@@ -108,9 +128,9 @@ function readFormData(formData: FormData) {
     const imageUrl = getString(`image_${i}_url`);
     const altText = getString(`image_${i}_alt`);
     const publicId = getString(`image_${i}_publicId`);
-    if (!imageUrl && !altText && !publicId && i > 24) break;
+    if (!imageUrl && !altText && !publicId && i > lastIndex) break;
     images.push({ imageUrl, altText, publicId });
-    if (i > 24) break;
+    if (i > lastIndex) break;
   }
 
   return {
@@ -139,6 +159,48 @@ function readFormData(formData: FormData) {
   };
 }
 
+/**
+ * Validates a product submission and returns either the parsed input or the
+ * field errors to render.
+ *
+ * SHARED BY CREATE AND UPDATE ON PURPOSE
+ * The row-limit rule must be identical for a new product and an edited one. A
+ * check written into only one action would leave the other silently truncating,
+ * which is the exact failure being fixed here.
+ *
+ * Overflow is merged into the Zod errors rather than replacing them, so a
+ * submission that is both over the limit and missing a required field reports
+ * both problems in one round trip instead of one per attempt.
+ */
+function parseProductSubmission(
+  formData: FormData,
+  schema: typeof createProductSchema | typeof updateProductSchema
+):
+  | { ok: true; data: CreateProductInput | UpdateProductInput }
+  | { ok: false; fieldErrors: Record<string, string> } {
+  const parsed = schema.safeParse(readFormData(formData));
+
+  /*
+   * Checked against the RAW FormData, not the parsed arrays: by the time Zod
+   * runs, any row past the limit has already been dropped by readFormData and is
+   * no longer visible. Scanning the submitted keys is the only place the extra
+   * row still exists.
+   */
+  const overflow = findRowOverflow(formData.entries());
+
+  const fieldErrors: Record<string, string> = parsed.success
+    ? {}
+    : toFieldErrors(parsed.error);
+  Object.assign(fieldErrors, overflowFieldErrors(overflow));
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return { ok: false, fieldErrors };
+  }
+
+  // `fieldErrors` is empty, which only happens when `parsed` succeeded.
+  return { ok: true, data: parsed.data as CreateProductInput | UpdateProductInput };
+}
+
 // ─── Create ───────────────────────────────────────────────────────────────────
 
 export async function createProduct(
@@ -152,13 +214,13 @@ export async function createProduct(
     };
   }
 
-  const parsed = createProductSchema.safeParse(readFormData(formData));
+  const parsed = parseProductSubmission(formData, createProductSchema);
 
-  if (!parsed.success) {
+  if (!parsed.ok) {
     return {
       status: 'error',
       message: 'Periksa kembali data yang diisi.',
-      fieldErrors: toFieldErrors(parsed.error),
+      fieldErrors: parsed.fieldErrors,
     };
   }
 
@@ -293,13 +355,13 @@ export async function updateProduct(
     };
   }
 
-  const parsed = updateProductSchema.safeParse(readFormData(formData));
+  const parsed = parseProductSubmission(formData, updateProductSchema);
 
-  if (!parsed.success) {
+  if (!parsed.ok) {
     return {
       status: 'error',
       message: 'Periksa kembali data yang diisi.',
-      fieldErrors: toFieldErrors(parsed.error),
+      fieldErrors: parsed.fieldErrors,
     };
   }
 

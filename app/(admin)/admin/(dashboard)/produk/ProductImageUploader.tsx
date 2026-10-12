@@ -18,6 +18,11 @@ import {
   type UploadedImage,
 } from '@/lib/cloudinary-upload';
 import { cn } from '@/lib/utils';
+import {
+  IMAGES_LIMIT_HINT,
+  IMAGES_LIMIT_MESSAGE,
+  MAX_PRODUCT_ROWS,
+} from '@/lib/validation/product-rows';
 
 /**
  * Product photo uploader — admin only.
@@ -86,6 +91,13 @@ export default function ProductImageUploader({
 
   const isUploading = pending.length > 0;
 
+  /**
+   * True once the gallery holds the server's row cap. Derived from `images`, the
+   * same array the hidden inputs are written from, so it cannot disagree with
+   * what would actually be submitted.
+   */
+  const imagesAtLimit = images.length >= MAX_PRODUCT_ROWS;
+
   const move = useCallback((index: number, direction: -1 | 1) => {
     setImages((prev) => {
       const target = index + direction;
@@ -105,7 +117,34 @@ export default function ProductImageUploader({
     async (fileList: FileList | null) => {
       if (!fileList || fileList.length === 0) return;
 
+      /*
+       * CAP CHECKED BEFORE ANYTHING IS UPLOADED
+       *
+       * Uploading happens first and the array is only appended at the end of the
+       * loop, so a capacity check placed after the uploads would let the excess
+       * files reach Cloudinary first and then discard their `secure_url` — leaving
+       * real assets on Cloudinary that no product row will ever reference. Phase
+       * 6C-2 is meant to reconcile those leftovers; creating them needlessly is
+       * still the wrong trade. Bailing out here uploads nothing at all.
+       */
+      const remaining = MAX_PRODUCT_ROWS - images.length;
+      if (remaining <= 0) {
+        setError(IMAGES_LIMIT_MESSAGE);
+        return;
+      }
+
       const selected = Array.from(fileList);
+
+      if (selected.length > remaining) {
+        setError(
+          `Hanya ${remaining} slot foto yang tersisa. ${selected.length - remaining} berkas tidak diunggah.`
+        );
+      } else {
+        setError(null);
+      }
+
+      // Never upload more than the cap allows.
+      const toUpload = selected.slice(0, remaining);
 
       /**
        * Skip anything already in the list, comparing by public id for freshly
@@ -126,7 +165,7 @@ export default function ProductImageUploader({
       );
       const seen = new Set<string>();
 
-      for (const file of selected) {
+      for (const file of toUpload) {
         // A cheap local key so two identical picks in one selection collapse.
         const localKey = `${file.name}:${file.size}:${file.lastModified}`;
 
@@ -204,7 +243,8 @@ export default function ProductImageUploader({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          disabled={isUploading}
+          disabled={isUploading || imagesAtLimit}
+          aria-disabled={isUploading || imagesAtLimit}
           className={cn(
             'inline-flex items-center gap-2 border border-[#E5E1DA] bg-white px-4 py-2.5',
             'text-[10px] uppercase tracking-[0.14em] text-[#1A1A1A]',
@@ -224,6 +264,12 @@ export default function ProductImageUploader({
           )}
           {isUploading ? 'Mengunggah…' : 'Tambah Foto'}
         </button>
+
+        {imagesAtLimit && (
+          <p className="mt-3 text-[10px] text-[#666666] leading-relaxed">
+            {IMAGES_LIMIT_HINT}
+          </p>
+        )}
 
         {isUploading && (
           <ul className="mt-3 space-y-1">

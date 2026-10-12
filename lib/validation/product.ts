@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import {
+  IMAGES_LIMIT_MESSAGE,
+  MAX_PRODUCT_ROWS,
+  SPECIFICATIONS_LIMIT_MESSAGE,
+} from './product-rows';
+
 /**
  * Server-side validation for product create/update.
  *
@@ -84,6 +90,26 @@ export const productImageInputSchema = z.object({
     imagePublicIdSchema.optional()
   ),
 });
+
+/**
+ * Maximum number of specification rows and of image slots a submission may carry.
+ *
+ * Re-exported from `lib/validation/product-rows.ts`, which is the single source
+ * of truth: the FormData parser, this schema, and the browser-side add controls
+ * must all agree, and the client cannot import this file without pulling Zod
+ * into the browser bundle.
+ *
+ * `readFormData` in `app/(admin)/admin/(dashboard)/produk/actions.ts` reads the
+ * indexed form keys and stops after index 25, so indices 0..25 are collected:
+ * 26 rows. An earlier audit described this as "limited to index 24"; the ceiling
+ * was confirmed by replaying the exact loop rather than reading it.
+ *
+ * NOTE: this `.max()` alone is not sufficient. The parser truncates before Zod
+ * runs, so a 27th row is dropped silently and the schema sees exactly 26 and
+ * passes. `findRowOverflow` in the same module is what turns that silent
+ * truncation into a validation error. Both are required.
+ */
+export { MAX_PRODUCT_ROWS } from './product-rows';
 
 /** A single Label | Value specification row. */
 export const productSpecificationInputSchema = z.object({
@@ -206,23 +232,35 @@ function refinePricing(
   }
 }
 
+/**
+ * The repeatable rows, shared verbatim by create and update.
+ *
+ * Declared once so the two schemas cannot drift apart: an upper bound added to
+ * only one of them would leave the other able to accept a submission the parser
+ * and the database were never sized for.
+ */
+const productRowsShape = {
+  specifications: z
+    .array(productSpecificationInputSchema)
+    .max(MAX_PRODUCT_ROWS, SPECIFICATIONS_LIMIT_MESSAGE)
+    .default([]),
+  images: z
+    .array(productImageInputSchema)
+    .min(1, 'Minimal satu foto produk harus tersedia.')
+    .max(MAX_PRODUCT_ROWS, IMAGES_LIMIT_MESSAGE),
+};
+
 export const createProductSchema = z
   .object({
     ...productBaseShape,
-    specifications: z.array(productSpecificationInputSchema).default([]),
-    images: z
-      .array(productImageInputSchema)
-      .min(1, 'Minimal satu foto produk harus tersedia.'),
+    ...productRowsShape,
   })
   .superRefine(refinePricing);
 
 export const updateProductSchema = z
   .object({
     ...productBaseShape,
-    specifications: z.array(productSpecificationInputSchema).default([]),
-    images: z
-      .array(productImageInputSchema)
-      .min(1, 'Minimal satu foto produk harus tersedia.'),
+    ...productRowsShape,
   })
   .superRefine(refinePricing);
 
