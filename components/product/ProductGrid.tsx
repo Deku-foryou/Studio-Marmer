@@ -1,23 +1,29 @@
 'use client';
 
 import { useFilter } from '@/context/FilterContext';
-import ProductCard from './ProductCard';
+import type { ReactNode } from 'react';
 import Pagination from './Pagination';
 import FilterBar from '../filters/FilterBar';
 import { PackageSearch } from 'lucide-react';
 import type {
   CatalogCategory,
   CatalogPage,
-  CatalogProduct,
 } from '../../types/product';
 
 interface ProductGridProps {
   /**
-   * The current page of products, already filtered, sorted and sliced by the
-   * server. This component must not re-filter or re-slice them: the DAL is what
-   * decided which rows belong on this page.
+   * The page of products, already rendered to markup by the Server Component
+   * that owns this tree (see app/(store)/page.tsx).
+   *
+   * It arrives as a slot rather than as a `products` array on purpose. A card
+   * rendered inside this Client Component would be compiled into the client
+   * bundle and hydrated, which is pure waste for markup with no behaviour. This
+   * way nothing about a card is shipped, and the products are not serialized a
+   * second time as a JSON prop either.
    */
-  products: CatalogProduct[];
+  cards: ReactNode;
+  /** Whether the page came back empty — decides the empty state below. */
+  isEmpty: boolean;
   /** Categories loaded on the server. */
   categories: CatalogCategory[];
   /** Counts and page geometry for the result set the grid is showing. */
@@ -27,13 +33,18 @@ interface ProductGridProps {
 /**
  * Client component that renders one page of the catalog.
  *
- * All product data arrives as serialized props from a Server Component - this
- * component performs no database access, and must never import Prisma. Filtering
- * and paging are server-side, so the only state it owns is what FilterBar and
- * Pagination need to drive navigation.
+ * Owns only what genuinely needs the browser: the filter bar, the pagination
+ * links, and the two empty-state messages that depend on whether filters are
+ * active. The products themselves are already-rendered markup from the server.
+ *
+ * All product data arrives from a Server Component - this component performs no
+ * database access, and must never import Prisma. Filtering and paging are
+ * server-side, so the only state it owns is what FilterBar and Pagination need
+ * to drive navigation.
  */
 export default function ProductGrid({
-  products,
+  cards,
+  isEmpty,
   categories,
   pagination,
 }: ProductGridProps) {
@@ -58,7 +69,7 @@ export default function ProductGrid({
       </div>
 
       {/* ─── Grid ─────────────────────────────────────────── */}
-      {products.length === 0 ? (
+      {isEmpty ? (
         <div className="flex flex-col items-center justify-center py-32 gap-6">
           <div className="w-20 h-20 border border-[#E5E1DA] bg-white rounded-none flex items-center justify-center">
             <PackageSearch size={32} className="text-[#999999]" />
@@ -83,19 +94,7 @@ export default function ProductGrid({
             role="list"
             aria-label="Daftar produk"
           >
-            {products.map((product, index) => (
-              <div
-                key={product.id}
-                role="listitem"
-                className="animate-fade-up h-full flex flex-col"
-                style={{
-                  animationDelay: `${Math.min(index * 50, 400)}ms`,
-                  animationFillMode: 'both',
-                }}
-              >
-                <ProductCard product={product} />
-              </div>
-            ))}
+            {cards}
           </div>
 
           {/* ─── Pagination ────────────────────────────────── */}

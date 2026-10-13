@@ -2,6 +2,7 @@ import HeroSection from '@/components/layout/HeroSection';
 import CategoriesSection from '@/components/sections/CategoriesSection';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
 import ProductGrid from '@/components/product/ProductGrid';
+import ProductCard from '@/components/product/ProductCard';
 import { FilterProvider } from '@/context/FilterContext';
 import {
   getCategories,
@@ -153,7 +154,35 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </div>
 
             <ProductGrid
-              products={catalog.products}
+              /*
+               * The cards are rendered HERE, on the server, and handed over as a
+               * ready-made tree rather than as a `products` array.
+               *
+               * ProductGrid is a Client Component, so a ProductCard rendered
+               * inside it is compiled into the client bundle and hydrated, even
+               * though the card holds no state and registers no handler — its
+               * comment in ProductCard.tsx claimed the opposite, and was wrong.
+               * Rendering them here means those bytes are never sent and those
+               * elements are never hydrated; the client only receives markup it
+               * already has.
+               *
+               * The staggered reveal is unchanged: the wrapper and its
+               * animationDelay move with the card, and it is still CSS.
+               */
+              cards={catalog.products.map((product, index) => (
+                <div
+                  key={product.id}
+                  role="listitem"
+                  className="animate-fade-up h-full flex flex-col"
+                  style={{
+                    animationDelay: `${Math.min(index * 50, 400)}ms`,
+                    animationFillMode: 'both',
+                  }}
+                >
+                  <ProductCard product={product} />
+                </div>
+              ))}
+              isEmpty={catalog.products.length === 0}
               categories={categories}
               pagination={catalog}
             />
