@@ -123,13 +123,61 @@
    * between breakpoints, and paired with a heavy mobile veil it left the hero
    * reading as an empty cream section. The photograph is the hero, so it stays
    * the same photograph everywhere and only the crop window and veil move.
+   *
+   * The DEFAULT is that single bundled 1672px WebP: hand-generated, and already
+   * format- and size-optimized, so it is served straight from /images and never
+   * routed back through the optimizer, which could only re-encode it.
+   *
+   * `background-image` is declared more than once, and the order matters:
+   *
+   *   1. `--hero-backdrop-src` — the admin's URL exactly as stored, used
+   *      verbatim. Always parses.
+   *   2. `--hero-backdrop-set` — what components/layout/HeroSection.tsx writes
+   *      inline: an `image-set()` of two renditions `/_next/image` would serve,
+   *      as `1x` / `2x`, so the browser takes one at the width and format it
+   *      actually needs rather than whatever was uploaded.
+   *   3. the same, from 1024px up, off the wider pair.
+   *
+   * Every declaration after the first is the enhancement and the first is the
+   * safety net. The mechanism — verified in Chrome 154 — is that a value the
+   * browser cannot parse is dropped at parse time, leaving the previous
+   * declaration as the computed value; a `url()` followed by an unparseable
+   * `image-set()` does resolve to the `url()`. So any browser that does not
+   * understand these values keeps today's behaviour, original upload and all,
+   * rather than losing the photograph.
+   *
+   * Which browsers understand them is a moving target and is NOT verified here:
+   * per MDN's browser-compat-data, unprefixed `image-set()` shipped in Safari 17
+   * while Safari 10.1-16 had only `-webkit-image-set()` with `1x`/`2x`. Chrome
+   * 154 was tested directly; Safari and Firefox were not, and no claim is made
+   * about them beyond that data.
+   *
+   * Every declaration falls back to the bundled asset, so while no admin image is
+   * set none of the custom properties exist and nothing here changes.
    */
   .hero-backdrop {
     background-color: var(--bg-cream);
-    background-image: url('/images/hero-marble-vanity-1672.webp');
+    background-image: var(--hero-backdrop-src, url('/images/hero-marble-vanity-1672.webp'));
+    background-image: var(--hero-backdrop-set, url('/images/hero-marble-vanity-1672.webp'));
     background-repeat: no-repeat;
     background-size: cover;
     background-position: center center;
+  }
+
+  /*
+   * 1024px is where the hero's own layout switches (see the lg: min-height and
+   * the veil width above), so it is where the wider pair takes over. The nested
+   * fallback re-declares the narrow pair so that if this component ever ships
+   * only one tier, the wide range still gets it rather than silently dropping
+   * back to the unoptimized original.
+   */
+  @media (min-width: 1024px) {
+    .hero-backdrop {
+      background-image: var(
+        --hero-backdrop-set-wide,
+        var(--hero-backdrop-set, url('/images/hero-marble-vanity-1672.webp'))
+      );
+    }
   }
 
   /*
