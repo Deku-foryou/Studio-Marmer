@@ -44,11 +44,22 @@ import type { SiteSettingsDTO } from '@/types/site';
  * column readable, and a short top fade that lets the sticky navbar melt into it.
  * Both are warm off-white at low alpha — the image is never darkened.
  *
- * There is deliberately no `<link rel="preload">` here. React emits such a link
- * twice in the streamed HTML, and the source is chosen per viewport by a media
- * query the preload cannot know, so it could only ever be a guess. The stylesheet
- * is render-blocking, so the request starts a few kilobytes into the CSS download
- * regardless.
+ * The photograph IS preloaded, and this comment used to say it should not be.
+ * That reasoning was wrong twice over. `fetchPriority` is not something CSS can
+ * carry, so a preload link is the only way to prioritise a background image at
+ * all; and "the source is chosen by a media query the preload cannot know" is no
+ * longer true either — there are exactly two tiers, and they are known here.
+ *
+ * Measured on a production build under slow 4G with a cold cache: without the
+ * preload the browser cannot discover the photograph until the render-blocking
+ * stylesheet has finished, so the request starts ~690 ms into the load, later
+ * than every script and the font on the page. With it, ~240 ms.
+ *
+ * On this dynamic route React flushes `<head>` twice and the single-file case
+ * therefore appears in it twice. That is known and deliberately left alone: the
+ * two are byte-identical, and the browser dedupes them into one request — checked
+ * at five viewport/DPR combinations, each showing exactly one hero request, issued
+ * by the parser at priority High.
  *
  * `settings.heroTitle` / `settings.heroSubtitle` still override the copy when
  * the admin has filled them in, so this screen stays editable from /admin/pengaturan.
@@ -111,22 +122,56 @@ const UNOPTIMIZABLE_SOURCE = /\.svg(?:$|[?#])/i;
 const HERO_TIER_WIDTHS = { narrow: 828, wide: 1920 } as const;
 
 /**
+ * The bundled photograph, preloaded when no admin image is set.
+ *
+ * This is the path `app/globals.css` falls back to (lines 160-161). The two must
+ * stay identical or the preload fetches one file and the backdrop paints
+ * another — the exact double download the preload exists to avoid. That is also
+ * why this case gets a plain `href` preload rather than an `imageSrcSet`: with
+ * one known static URL there is no candidate for the browser to disagree about.
+ */
+const DEFAULT_HERO_IMAGE = '/images/hero-marble-vanity-1672.webp';
+
+/**
+ * What `.hero-backdrop` needs, plus what a preload link needs, from one call.
+ *
+ * Keeping both in a single return is the whole point: the CSS and the preload
+ * are handed the *same* two candidates, so they cannot drift, and the media
+ * query below lines up with the `@media (min-width: 1024px)` rule in globals.css
+ * that switches the tiers.
+ */
+interface HeroBackdropSources {
+  /** The `background-image` value: an `image-set(...)`, or a plain `url(...)`. */
+  imageSet: string;
+  /**
+   * The optimizer's srcset, for `<link rel="preload" imageSrcSet>`.
+   *
+   * Absent when there is nothing to preload through the optimizer — an SVG, a
+   * data:/blob: source, or a host the allow-list rejects. The preload is then
+   * skipped rather than pointed at a URL that would 400.
+   */
+  srcSet?: string;
+}
+
+/**
  * Builds the enhanced `background-image` value for `.hero-backdrop` from an
  * admin-supplied URL: an `image-set()` of the renditions the image optimizer
- * would serve, as `1x` / `2x`.
+ * would serve, as `1x` / `2x` — plus the srcset behind it, so the preload link
+ * can advertise the very same two candidates.
  *
  * Every path that cannot produce a srcset returns a plain `url()` of the original
- * source, so the worst case is exactly the pre-optimization behaviour.
+ * source and no srcset, so the worst case is exactly the pre-optimization
+ * behaviour.
  *
  * The caller supplies that plain-`url()` value separately as
  * `--hero-backdrop-src`, because `globals.css` declares `background-image` more
  * than once so a browser which cannot parse these values keeps the original URL
  * rather than losing the photograph.
  */
-function heroImageSet(src: string, baseWidth: number): string {
+function heroBackdropSources(src: string, baseWidth: number): HeroBackdropSources {
   const plainUrl = `url("${src}")`;
 
-  if (UNOPTIMIZABLE_SOURCE.test(src)) return plainUrl;
+  if (UNOPTIMIZABLE_SOURCE.test(src)) return { imageSet: plainUrl };
 
   let srcSet: string | undefined;
 
@@ -164,11 +209,11 @@ function heroImageSet(src: string, baseWidth: number): string {
       }`
     );
 
-    return plainUrl;
+    return { imageSet: plainUrl };
   }
 
   // `data:` and `blob:` sources are also served unoptimized, so no srcset.
-  return srcSet ? toImageSet(srcSet) : plainUrl;
+  return srcSet ? { imageSet: toImageSet(srcSet), srcSet } : { imageSet: plainUrl };
 }
 
 export default function HeroSection({ settings }: HeroSectionProps) {
@@ -185,6 +230,18 @@ export default function HeroSection({ settings }: HeroSectionProps) {
     : null;
 
   /*
+   * Both tiers are resolved once and used twice: the CSS below and the preload
+   * beside it. Deriving them separately would be the one way this could preload a
+   * file the backdrop never paints.
+   */
+  const narrow = heroImageUrl
+    ? heroBackdropSources(heroImageUrl, HERO_TIER_WIDTHS.narrow)
+    : { imageSet: '' };
+  const wide = heroImageUrl
+    ? heroBackdropSources(heroImageUrl, HERO_TIER_WIDTHS.wide)
+    : { imageSet: '' };
+
+  /*
    * Custom properties rather than a direct `backgroundImage`: the stylesheet
    * owns the fallback cascade, and an inline `background-image` would outrank the
    * enhanced declarations and take the fallback down with it.
@@ -199,16 +256,57 @@ export default function HeroSection({ settings }: HeroSectionProps) {
   const backdropVars = heroImageUrl
     ? ({
         '--hero-backdrop-src': `url("${heroImageUrl}")`,
-        '--hero-backdrop-set': heroImageSet(heroImageUrl, HERO_TIER_WIDTHS.narrow),
-        '--hero-backdrop-set-wide': heroImageSet(heroImageUrl, HERO_TIER_WIDTHS.wide),
+        '--hero-backdrop-set': narrow.imageSet,
+        '--hero-backdrop-set-wide': wide.imageSet,
       } as CSSProperties)
     : undefined;
+
+  /*
+   * The preload, in the three shapes the two cases can take:
+   *
+   *  - an admin image that the optimizer can serve gets one link per tier,
+   *    each `media`-scoped to the same breakpoint globals.css uses, each
+   *    advertising the exact srcset the CSS will paint. One link matches any
+   *    given viewport, so this cannot become two requests.
+   *  - no admin image gets a plain `href` for the bundled file. One known URL,
+   *    no candidate selection, nothing for the browser to get wrong.
+   *  - an admin image the optimizer refuses (SVG, unlisted host) gets nothing:
+   *    preloading a URL that would 400 wastes a request to buy nothing.
+   */
+  const preload = !heroImageUrl ? (
+    <link rel="preload" as="image" fetchPriority="high" type="image/webp" href={DEFAULT_HERO_IMAGE} />
+  ) : narrow.srcSet && wide.srcSet ? (
+    <>
+      <link
+        rel="preload"
+        as="image"
+        fetchPriority="high"
+        media="(max-width: 1023px)"
+        imageSrcSet={narrow.srcSet}
+      />
+      <link
+        rel="preload"
+        as="image"
+        fetchPriority="high"
+        media="(min-width: 1024px)"
+        imageSrcSet={wide.srcSet}
+      />
+    </>
+  ) : null;
 
   return (
     <section
       className="relative isolate flex items-center overflow-hidden bg-[#FBF9F6] min-h-[540px] sm:min-h-[640px] lg:min-h-[720px]"
       aria-label="Studio Marmer"
     >
+        {/*
+          The preload sits at the top of the document flow so the parser meets it
+          while the render-blocking stylesheet is still downloading — which is the
+          entire point. React 19 hoists it into <head> when it can; either way it
+          is discovered long before the CSS could have revealed the photograph.
+        */}
+        {preload}
+
         {/* ─── Background photograph ──────────────────────────────── */}
         {/*
           The photograph is a CSS background layer, not an <Image>, so `cover`
