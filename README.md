@@ -132,6 +132,9 @@ Models:
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | Run ESLint |
+| `npm test` | Run the Vitest unit suite |
+| `npm run test:scripts` | Run the root-level schema/overflow cross-check scripts |
+| `npm run measure:home-client` | Report the homepage's client JS (raw + gzip) from the build manifest |
 
 ---
 
@@ -152,16 +155,18 @@ studio-marmer/
 │   ├── product/             # ProductCard, ProductGrid, Pagination, gallery, accordion, purchase actions
 │   ├── sections/            # Homepage section components
 │   ├── filters/             # FilterBar
-│   └── ui/                  # Badge, Button (primitives)
+│   └── ui/                  # (no shared primitives yet)
 ├── context/
 │   └── FilterContext.tsx    # URL-backed search / filter / sort state
+├── scripts/
+│   └── measure-home-client.mjs  # Homepage client-JS budget report
 ├── lib/
 │   ├── brand.ts             # Brand name and navigation links
 │   ├── site-url.ts          # Canonical public origin (NEXT_PUBLIC_SITE_URL)
 │   ├── utils.ts             # cn, formatPrice, WhatsApp link helpers
 │   ├── catalog-query.ts     # Catalog search-param contract, PRODUCTS_PER_PAGE = 8
 │   ├── data/                # SERVER-ONLY data access layer
-│   │   ├── products.ts      # getProducts, getProductBySlug, getFeaturedProducts, getCategories
+│   │   ├── products.ts      # getCatalogProducts, getProductBySlug, getFeaturedProducts, getCategories
 │   │   └── site.ts          # getSiteSettings
 │   └── db/
 │       ├── prisma.ts        # Prisma client singleton

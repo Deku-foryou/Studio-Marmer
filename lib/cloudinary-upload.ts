@@ -24,8 +24,13 @@
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
-/** Formats accepted by the Cloudinary preset. */
-export const ACCEPTED_IMAGE_TYPES = [
+/**
+ * Formats accepted by the Cloudinary preset.
+ *
+ * Module-private: `IMAGE_INPUT_ACCEPT` below is the surface callers use for the
+ * `accept` attribute, and the validation below is the only other reader.
+ */
+const ACCEPTED_IMAGE_TYPES = [
   'image/jpeg',
   'image/png',
   'image/webp',
@@ -81,8 +86,12 @@ function isConfigured(): boolean {
  * avoids burning bandwidth on a file Cloudinary would only reject. It is a
  * convenience, not a security control: the preset itself enforces formats and
  * size server-side at Cloudinary.
+ *
+ * Module-private: `uploadImage` below is the only caller. Every admin uploader
+ * goes through it, so there is no reason for a caller to pre-check separately
+ * and drift from the checks that actually guard the request.
  */
-export function validateImageFile(file: File): void {
+function validateImageFile(file: File): void {
   if (!(ACCEPTED_IMAGE_TYPES as readonly string[]).includes(file.type)) {
     throw new ImageUploadError(
       'Format foto tidak didukung. Gunakan JPG, PNG, atau WEBP.'

@@ -10,16 +10,21 @@
  * file; in production the variable must be set to the real domain.
  *
  * This module exists so the origin string is not duplicated across components.
+ *
+ * Only `absoluteUrl` is exported. `SITE_ORIGIN_FALLBACK` and `getSiteOrigin`
+ * are module-private: nothing outside this file needs the raw origin or the
+ * fallback, and keeping them internal stops a caller from re-implementing the
+ * trailing-slash handling.
  */
 
 /** Fallback used only when the environment variable is absent. */
-export const SITE_ORIGIN_FALLBACK = 'http://localhost:3000';
+const SITE_ORIGIN_FALLBACK = 'http://localhost:3000';
 
 /**
  * Public origin with any trailing slash removed, so callers can safely
  * concatenate `${origin}/produk/...`.
  */
-export function getSiteOrigin(): string {
+function getSiteOrigin(): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   const origin = configured && configured.length > 0
     ? configured

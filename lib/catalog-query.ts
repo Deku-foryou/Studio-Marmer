@@ -19,18 +19,22 @@ import type { SortOption } from '@/types/product';
 export const PRODUCTS_PER_PAGE = 8;
 
 /** Anchor id of the catalog section, used to scroll back to the grid. */
-export const CATALOG_ANCHOR = 'katalog';
+const CATALOG_ANCHOR = 'katalog';
 
 /**
  * Query parameter names. `kategori` and `sort` match the vocabulary already used
  * elsewhere in the storefront copy; the rest are named explicitly so the URL
  * never has to guess which of several params it is looking at.
+ *
+ * Module-private on purpose: these are an implementation detail of the parser
+ * and serialiser below, and exporting them would invite a caller to hand-build
+ * a query string that bypasses the validation in `parseFrom`.
  */
-export const PARAM_PAGE = 'page';
-export const PARAM_CATEGORIES = 'kategori';
-export const PARAM_IN_STOCK = 'tersedia';
-export const PARAM_SORT = 'sort';
-export const PARAM_SEARCH = 'q';
+const PARAM_PAGE = 'page';
+const PARAM_CATEGORIES = 'kategori';
+const PARAM_IN_STOCK = 'tersedia';
+const PARAM_SORT = 'sort';
+const PARAM_SEARCH = 'q';
 
 /** The sort orders the data access layer knows how to translate. */
 const SORT_VALUES: readonly string[] = [
@@ -40,7 +44,7 @@ const SORT_VALUES: readonly string[] = [
   'trending',
 ];
 
-export function isSortOption(value: string): value is SortOption {
+function isSortOption(value: string): value is SortOption {
   return SORT_VALUES.includes(value);
 }
 

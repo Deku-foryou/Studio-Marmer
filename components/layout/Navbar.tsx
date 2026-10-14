@@ -5,7 +5,7 @@ import Link from 'next/link';
 import NavbarSearch, { NavbarSearchSkeleton } from './NavbarSearch';
 import SiteLogo from './SiteLogo';
 import { Search, X, Menu, MessageCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, normalizeWhatsAppNumber } from '@/lib/utils';
 import { BRAND, NAV_LINKS } from '@/lib/brand';
 import type { SiteSettingsDTO } from '@/types/site';
 
@@ -75,8 +75,12 @@ export default function Navbar({ settings }: NavbarProps) {
     };
   }, [isMenuOpen]);
 
-  const whatsappHref = settings.whatsappNumber
-    ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, '')}`
+  // Bare wa.me URL with no prefilled text, as on the hero — see the note there
+  // for why this normalises through the shared helper instead of inlining
+  // `.replace(/\D/g, '')`.
+  const whatsappDigits = normalizeWhatsAppNumber(settings.whatsappNumber);
+  const whatsappHref = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}`
     : null;
 
   return (

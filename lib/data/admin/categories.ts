@@ -145,13 +145,6 @@ export async function getAdminCategoryById(
   };
 }
 
-/** Return the number of products in this category. */
-export async function getCategoryProductCount(id: number): Promise<number> {
-  return prisma.product.count({
-    where: { categoryId: id },
-  });
-}
-
 /** Generate a deterministic, URL-safe slug from a category name.
  *  Resolves collisions with numeric suffixes (-2, -3, ...) against the
  *  existing database.  The caller may pass an optional `excludeId` so that

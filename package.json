@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:scripts": "tsx test-validation.mts && tsx test-row-overflow.mts",
+    "measure:home-client": "node scripts/measure-home-client.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

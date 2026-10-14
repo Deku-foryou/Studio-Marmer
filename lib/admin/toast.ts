@@ -171,13 +171,6 @@ export function isAdminToastCode(
   return typeof value === 'string' && Object.hasOwn(ADMIN_TOASTS, value);
 }
 
-/** Looks a message up, returning null for anything unknown. */
-export function getAdminToast(
-  code: AdminToastCode
-): ToastMessage {
-  return ADMIN_TOASTS[code];
-}
-
 /**
  * Appends the notification key to a redirect target.
  *

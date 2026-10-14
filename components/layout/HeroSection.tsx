@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getImageProps } from 'next/image';
 import { ArrowRight, MessageCircle } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { normalizeWhatsAppNumber } from '@/lib/utils';
 import type { SiteSettingsDTO } from '@/types/site';
 
 /**
@@ -225,8 +226,18 @@ export default function HeroSection({ settings }: HeroSectionProps) {
    * page itself as the hero photograph.
    */
   const heroImageUrl = settings.heroImageUrl?.trim() || undefined;
-  const whatsappHref = settings.whatsappNumber
-    ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, '')}`
+  /*
+   * The CTA deliberately has no prefilled message, so this builds the bare
+   * wa.me URL rather than calling `buildWhatsAppLink`, which appends
+   * `?text=…`. It shares the normaliser with the other call sites though:
+   * `normalizeWhatsAppNumber` strips formatting and expands a leading `0` to
+   * `62`. On any value written through the admin form this is a no-op — the
+   * schema stores digits only, already in country-code form, matching
+   * /^\d{8,15}$/ — so the rendered link is unchanged.
+   */
+  const whatsappDigits = normalizeWhatsAppNumber(settings.whatsappNumber);
+  const whatsappHref = whatsappDigits
+    ? `https://wa.me/${whatsappDigits}`
     : null;
 
   /*

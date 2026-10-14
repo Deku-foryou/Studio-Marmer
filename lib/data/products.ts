@@ -267,7 +267,7 @@ export interface CatalogQueryInput {
  */
 function buildCatalogWhere(input: CatalogQueryInput): Prisma.ProductWhereInput {
   const conditions: Prisma.ProductWhereInput[] = [
-    // The storefront never lists a sold-out piece - unchanged from getProducts().
+    // The storefront never lists a sold-out piece.
     { isAvailable: true },
   ];
 
@@ -397,21 +397,6 @@ export async function getProductCountsByCategory(): Promise<Record<string, numbe
 
 // ─── Public queries ───────────────────────────────────────────────────────────
 
-/**
- * All products for the catalog listing.
- * Only available products are returned; unavailable ones are excluded so the
- * storefront never shows a sold-out piece in the grid.
- */
-export async function getProducts(): Promise<CatalogProduct[]> {
-  const rows = (await prisma.product.findMany({
-    where: { isAvailable: true },
-    select: PRODUCT_SELECT,
-    orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
-  })) as ProductRow[];
-
-  return rows.map(toCatalogProduct);
-}
-
 /** Full detail for one product, looked up by its public slug. */
 export async function getProductBySlug(
   slug: string
@@ -458,15 +443,4 @@ export async function getCategories(): Promise<CatalogCategory[]> {
     sortOrder: row.sortOrder,
     isActive: row.isActive,
   }));
-}
-
-/** Slugs for `generateStaticParams` and 404 pre-checks. */
-export async function getAllProductSlugs(): Promise<string[]> {
-  const rows = await prisma.product.findMany({
-    where: { isAvailable: true },
-    select: { slug: true },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  return rows.map((row) => row.slug);
 }
