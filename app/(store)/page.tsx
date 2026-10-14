@@ -3,7 +3,6 @@ import CategoriesSection from '@/components/sections/CategoriesSection';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
 import ProductGrid from '@/components/product/ProductGrid';
 import ProductCard from '@/components/product/ProductCard';
-import { FilterProvider } from '@/context/FilterContext';
 import {
   getCategories,
   getCatalogProducts,
@@ -137,58 +136,71 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       </section>
 
       {/* ─── Catalog ─────────────────────────────────────────────── */}
-      <FilterProvider>
-        <div id="katalog" className="scroll-mt-24">
-          <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
-            <div className="mb-8 sm:mb-10 border-b border-[#E5E1DA] pb-8">
-              <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-2">
-                Katalog
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight mb-2">
-                Semua Produk
-              </h2>
-              <p className="text-[#666666] text-sm max-w-md font-light">
-                Telusuri produk yang tersedia. Gunakan pencarian dan filter untuk
-                mempersempit pilihan.
-              </p>
-            </div>
+      <div id="katalog" className="scroll-mt-24">
+        <section className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 pb-16 sm:pb-20">
+          <div className="mb-8 sm:mb-10 border-b border-[#E5E1DA] pb-8">
+            <span className="text-[10px] uppercase tracking-[0.24em] text-[#8B7355] font-medium block mb-2">
+              Katalog
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-light text-[#1A1A1A] tracking-tight mb-2">
+              Semua Produk
+            </h2>
+            <p className="text-[#666666] text-sm max-w-md font-light">
+              Telusuri produk yang tersedia. Gunakan pencarian dan filter untuk
+              mempersempit pilihan.
+            </p>
+          </div>
 
-            <ProductGrid
-              /*
-               * The cards are rendered HERE, on the server, and handed over as a
-               * ready-made tree rather than as a `products` array.
-               *
-               * ProductGrid is a Client Component, so a ProductCard rendered
-               * inside it is compiled into the client bundle and hydrated, even
-               * though the card holds no state and registers no handler — its
-               * comment in ProductCard.tsx claimed the opposite, and was wrong.
-               * Rendering them here means those bytes are never sent and those
-               * elements are never hydrated; the client only receives markup it
-               * already has.
-               *
-               * The staggered reveal is unchanged: the wrapper and its
-               * animationDelay move with the card, and it is still CSS.
-               */
-              cards={catalog.products.map((product, index) => (
-                <div
-                  key={product.id}
-                  role="listitem"
-                  className="animate-fade-up h-full flex flex-col"
-                  style={{
-                    animationDelay: `${Math.min(index * 50, 400)}ms`,
-                    animationFillMode: 'both',
-                  }}
-                >
-                  <ProductCard product={product} />
-                </div>
-              ))}
-              isEmpty={catalog.products.length === 0}
-              categories={categories}
-              pagination={catalog}
-            />
-          </section>
-        </div>
-      </FilterProvider>
+          <ProductGrid
+            /*
+             * The cards are rendered HERE, on the server, and handed over as a
+             * ready-made tree rather than as a `products` array.
+             *
+             * A card is pure markup, so keeping it out of any client boundary
+             * means it is never hydrated. ProductGrid is a Server Component and
+             * mounts `FilterProvider` around the filter bar alone, so nothing
+             * below this comment is inside a client boundary: the cards, the
+             * grid wrapper and this section are all server-rendered and shipped
+             * as markup.
+             *
+             * The staggered reveal is unchanged: the wrapper and its
+             * animationDelay move with the card, and it is still CSS.
+             */
+            cards={catalog.products.map((product, index) => (
+              <div
+                key={product.id}
+                role="listitem"
+                className="animate-fade-up h-full flex flex-col"
+                style={{
+                  animationDelay: `${Math.min(index * 50, 400)}ms`,
+                  animationFillMode: 'both',
+                }}
+              >
+                <ProductCard product={product} />
+              </div>
+            ))}
+            isEmpty={catalog.products.length === 0}
+            /*
+             * An empty grid means two very different things, and conflating them
+             * would tell a visitor to change filters they never set. With
+             * nothing active, the catalog itself is simply empty - which is the
+             * storefront's normal state before the client's catalog is published.
+             *
+             * Derived from `query`, which is the same parsed URL the browser
+             * would have produced client-side, so this is the identical value -
+             * just computed once on the server instead of on every hydration.
+             */
+            hasActiveFilters={
+              query.categories.length > 0 ||
+              query.inStockOnly ||
+              query.sort !== 'featured' ||
+              query.search.trim() !== ''
+            }
+            categories={categories}
+            pagination={catalog}
+          />
+        </section>
+      </div>
 
       <WhatsAppCta settings={settings} />
     </>

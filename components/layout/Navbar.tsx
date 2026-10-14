@@ -19,10 +19,41 @@ export default function Navbar({ settings }: NavbarProps) {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  /*
+   * Shrink the bar once the page has scrolled past 10px.
+   *
+   * The scroll event fires far faster than the screen refreshes - a trackpad
+   * gesture can emit well over a hundred of them per second - and this runs on
+   * every one of them. Two things keep that cheap:
+   *
+   *   - The listener is rAF-coalesced, so at most one read of `scrollY` and at
+   *     most one state check happen per frame, and the work is dropped entirely
+   *     while the tab is hidden rather than queued up.
+   *   - `isScrolled` is compared before it is set, so React is only asked to
+   *     schedule a render on the frames where the threshold is actually
+   *     crossed - twice for the whole life of the page, not once per event.
+   *
+   * The rendered result is identical: the same boolean, driven by the same
+   * 10px threshold. Only the frequency of the checks changed.
+   */
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    let frame = 0;
+
+    const handleScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setIsScrolled((scrolled) =>
+          scrolled === window.scrollY > 10 ? scrolled : window.scrollY > 10
+        );
+      });
+    };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, []);
 
   // Close the mobile menu whenever the viewport grows past the md breakpoint.

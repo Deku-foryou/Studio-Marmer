@@ -1,14 +1,9 @@
-'use client';
-
-import { useFilter } from '@/context/FilterContext';
-import type { ReactNode } from 'react';
+import { ReactNode } from 'react';
+import { FilterProvider } from '@/context/FilterContext';
 import Pagination from './Pagination';
 import FilterBar from '../filters/FilterBar';
 import { PackageSearch } from 'lucide-react';
-import type {
-  CatalogCategory,
-  CatalogPage,
-} from '../../types/product';
+import type { CatalogCategory, CatalogPage } from '../../types/product';
 
 interface ProductGridProps {
   /**
@@ -16,14 +11,17 @@ interface ProductGridProps {
    * that owns this tree (see app/(store)/page.tsx).
    *
    * It arrives as a slot rather than as a `products` array on purpose. A card
-   * rendered inside this Client Component would be compiled into the client
-   * bundle and hydrated, which is pure waste for markup with no behaviour. This
-   * way nothing about a card is shipped, and the products are not serialized a
-   * second time as a JSON prop either.
+   * rendered inside a Client Component would be compiled into the client bundle
+   * and hydrated, which is pure waste for markup with no behaviour.
    */
   cards: ReactNode;
   /** Whether the page came back empty — decides the empty state below. */
   isEmpty: boolean;
+  /**
+   * Whether any filter, sort or search is active — the other half of the empty
+   * state. Supplied by the Server Component, which already parsed the same URL.
+   */
+  hasActiveFilters: boolean;
   /** Categories loaded on the server. */
   categories: CatalogCategory[];
   /** Counts and page geometry for the result set the grid is showing. */
@@ -31,41 +29,45 @@ interface ProductGridProps {
 }
 
 /**
- * Client component that renders one page of the catalog.
+ * Server Component that renders one page of the catalog.
  *
- * Owns only what genuinely needs the browser: the filter bar, the pagination
- * links, and the two empty-state messages that depend on whether filters are
- * active. The products themselves are already-rendered markup from the server.
+ * WHY THIS IS NOT A CLIENT COMPONENT
+ * It is the last thing standing between the product grid and a clean server
+ * render. The grid itself is markup: no state, no handlers, no browser APIs. But
+ * this component used to read `useFilter()` for one boolean, which forced the
+ * whole tree — the cards, the section wrapper, the static catalog heading — to
+ * sit inside a client boundary and be hydrated on every load.
  *
- * All product data arrives from a Server Component - this component performs no
+ * That boolean does not need the client. The filter state is a pure projection
+ * of the URL, and the Server Component has already parsed that URL into `query`.
+ * So it is passed in as a prop, this component drops `useFilter()`, and the
+ * grid renders on the server with nothing to hydrate.
+ *
+ * Only `FilterBar` genuinely needs the context, so `FilterProvider` is mounted
+ * here around the filter bar alone rather than around the entire catalog
+ * section. `Pagination` reads `useSearchParams` directly and needs no provider,
+ * and the product cards need nothing at all.
+ *
+ * All product data arrives from a Server Component — this component performs no
  * database access, and must never import Prisma. Filtering and paging are
- * server-side, so the only state it owns is what FilterBar and Pagination need
- * to drive navigation.
+ * server-side.
  */
 export default function ProductGrid({
   cards,
   isEmpty,
+  hasActiveFilters,
   categories,
   pagination,
 }: ProductGridProps) {
   const { total, currentPage, totalPages } = pagination;
-  const { filters } = useFilter();
-
-  // An empty grid means two very different things, and conflating them would
-  // tell a visitor to change filters they never set. With nothing active, the
-  // catalog itself is simply empty - which is the storefront's normal state
-  // before the client's catalog is published.
-  const hasActiveFilters =
-    filters.selectedCategories.length > 0 ||
-    filters.showInStockOnly ||
-    filters.selectedSort !== 'featured' ||
-    filters.searchQuery.trim() !== '';
 
   return (
     <section aria-label="Katalog produk">
       {/* ─── Filters ──────────────────────────────────────── */}
       <div className="mb-8">
-        <FilterBar pagination={pagination} categories={categories} />
+        <FilterProvider>
+          <FilterBar pagination={pagination} categories={categories} />
+        </FilterProvider>
       </div>
 
       {/* ─── Grid ─────────────────────────────────────────── */}
