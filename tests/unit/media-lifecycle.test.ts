@@ -63,6 +63,36 @@ function stubCloudinary(
   };
 }
 
+/**
+ * A confirmed Cloudinary deletion.
+ *
+ * This is the documented shape of a successful `image/destroy`: HTTP 200 with a
+ * body of `{"result":"ok"}`. The status code alone does not mean "deleted" —
+ * Cloudinary answers 200 for several outcomes and the payload is what says which
+ * one happened. A stub that returns 200 with an empty body describes a response
+ * Cloudinary never sends, and the helper correctly refuses to read it as success.
+ */
+const CLOUDINARY_DELETED = { status: 200, body: { result: 'ok' } };
+
+/**
+ * An asset that is already gone upstream, still stated through `result` so a
+ * bare 404 cannot be mistaken for it. A 404 on this API also means "unknown
+ * cloud or route", and recording that as "nothing to do" would hide a
+ * configuration error behind a clean-looking result.
+ */
+const CLOUDINARY_GONE = { status: 404, body: { result: 'not found' } };
+
+/**
+ * The answer Cloudinary actually gives when `destroy` is called for an asset
+ * that is not there: HTTP 200 carrying `{"result":"not found"}`.
+ *
+ * This is the ordinary path, and it is deliberately distinct from
+ * `CLOUDINARY_GONE` above. Both must be understood through `result` rather than
+ * through the status code, and the two together pin down why: a 200 can mean
+ * "deleted" or "was never there", and a 404 can mean "gone" or "wrong cloud".
+ */
+const CLOUDINARY_ALREADY_GONE = { status: 200, body: { result: 'not found' } };
+
 /** Default: every Prisma lookup finds nothing, so nothing is referenced. */
 function nothingReferenced() {
   mocks.findFirst.mockReset();
@@ -194,7 +224,7 @@ describe('cleanupUnreferencedAssets', () => {
   });
 
   it('de-duplicates a candidate submitted twice', async () => {
-    const stub = stubCloudinary(() => ({ status: 200, body: {} }));
+    const stub = stubCloudinary(() => CLOUDINARY_DELETED);
 
     const result = await cleanupUnreferencedAssets([
       'studio-marmer/gallery/g1',
@@ -207,11 +237,41 @@ describe('cleanupUnreferencedAssets', () => {
   });
 
   it('treats an upstream 404 as already gone', async () => {
-    const stub = stubCloudinary(() => ({ status: 404 }));
+    const stub = stubCloudinary(() => CLOUDINARY_GONE);
     const result = await cleanupUnreferencedAssets(['studio-marmer/site/old']);
 
     expect(result.notFound).toEqual(['studio-marmer/site/old']);
     expect(result.failed).toEqual([]);
+    stub.restore();
+  });
+
+  it('reads a 200 "not found" answer as already gone, not as a failure', async () => {
+    // This is what Cloudinary returns in production when the asset has already
+    // gone. The end state the caller asked for has happened, so it belongs in
+    // `notFound` — reporting it as `failed` would show an admin outstanding work
+    // that is already done, and reporting it as `deleted` would claim a deletion
+    // this process never performed.
+    const stub = stubCloudinary(() => CLOUDINARY_ALREADY_GONE);
+    const result = await cleanupUnreferencedAssets(['studio-marmer/site/old']);
+
+    expect(result.notFound).toEqual(['studio-marmer/site/old']);
+    expect(result.failed).toEqual([]);
+    expect(result.deleted).toEqual([]);
+    stub.restore();
+  });
+
+  it('does not read a bare 200 as deleted without a `result` field', async () => {
+    // Guards the property the other four cases rely on: the status code alone
+    // never means "deleted". A 200 carrying no `result` is an unreadable
+    // answer, so it has to surface as a failure an admin can act on — not as a
+    // silent success, and not as a swallowed asset.
+    const stub = stubCloudinary(() => ({ status: 200, body: {} }));
+
+    const result = await cleanupUnreferencedAssets(['studio-marmer/products/old']);
+
+    expect(result.deleted).toEqual([]);
+    expect(result.notFound).toEqual([]);
+    expect(result.failed).toEqual(['studio-marmer/products/old']);
     stub.restore();
   });
 
@@ -248,7 +308,7 @@ describe('cleanupUnreferencedAssets', () => {
     const stub = stubCloudinary((_url, body) =>
       body.get('public_id') === 'studio-marmer/products/bad'
         ? { status: 500, body: {} }
-        : { status: 200, body: {} }
+        : CLOUDINARY_DELETED
     );
 
     const result = await cleanupUnreferencedAssets([
@@ -292,7 +352,7 @@ describe('cleanupReplacedAsset', () => {
   });
 
   it('cleans the old asset only when it differs from the new one', async () => {
-    const stub = stubCloudinary(() => ({ status: 200, body: {} }));
+    const stub = stubCloudinary(() => CLOUDINARY_DELETED);
     const result = await cleanupReplacedAsset('studio-marmer/x/old', 'studio-marmer/x/new');
 
     expect(result?.deleted).toEqual(['studio-marmer/x/old']);
