@@ -38,15 +38,6 @@ import {
  * that no longer exists.
  */
 
-/** Every column in the schema that stores a Cloudinary public id. */
-const PUBLIC_ID_COLUMNS = [
-  { model: 'productImage', column: 'publicId' },
-  { model: 'category', column: 'publicId' },
-  { model: 'galleryImage', column: 'publicId' },
-  { model: 'siteSettings', column: 'logoPublicId' },
-  { model: 'siteSettings', column: 'heroImagePublicId' },
-] as const;
-
 export type CleanupResult = {
   /** Assets Cloudinary confirmed gone. */
   deleted: string[];
@@ -64,6 +55,14 @@ export type CleanupResult = {
 
 /**
  * True while any live row still stores `publicId`.
+ *
+ * These five columns are the complete list: `ProductImage.publicId`,
+ * `Category.publicId`, `GalleryImage.publicId`, and the two
+ * `SiteSettings` columns (`logoPublicId`, `heroImagePublicId`). A new column that
+ * stores a Cloudinary public id has to be added here too, or an asset it holds
+ * could be deleted while still in use. The list used to be a separate
+ * `PUBLIC_ID_COLUMNS` constant, but nothing ever read it — the queries below
+ * name each column directly — so keeping it was a second place to forget.
  *
  * `siteSettings` is a singleton, so its two columns are checked with a single
  * `findFirst` rather than a count.

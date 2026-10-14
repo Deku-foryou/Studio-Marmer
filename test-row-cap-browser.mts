@@ -13,7 +13,7 @@
  *
  *   npx tsx test-row-cap-browser.mts
  */
-import { spawn, type ChildProcess } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -45,9 +45,35 @@ async function waitForDevTools(): Promise<string> {
   throw new Error('devtools unavailable');
 }
 
+/**
+ * A value produced by `Runtime.evaluate` with `returnByValue: true`.
+ *
+ * CDP serialises whatever the expression evaluated into JSON, so the honest type
+ * is "some JSON value". This union covers everything the checks below actually
+ * evaluate: pathnames, row counts, booleans, and short marker strings.
+ */
+type CdpValue = string | number | boolean | null | undefined;
+
+/**
+ * The payload a CDP command resolves with.
+ *
+ * `result.value` carries an evaluated value and `exceptionDetails` marks an
+ * error thrown inside the page. The index signature is not optional decoration:
+ * result payloads are method-specific — `Target.createTarget` answers
+ * `{ targetId }`, `Target.attachToTarget` answers `{ sessionId }` — so they
+ * cannot be enumerated here without pretending to model the whole protocol.
+ */
+type CdpPayload = {
+  result?: { value?: CdpValue };
+  exceptionDetails?: { text?: string };
+} & Record<string, unknown>;
+
+/** `eval()` yields a raw value, or the message of a page-side exception. */
+type EvalResult = CdpValue | { __err?: string };
+
 class Cdp {
   private ws!: WebSocket; private id = 0;
-  private pending = new Map<number, (v: any) => void>();
+  private pending = new Map<number, (v: CdpPayload) => void>();
   async connect(url: string) {
     this.ws = new WebSocket(url);
     await new Promise<void>((res, rej) => { this.ws.onopen = () => res(); this.ws.onerror = rej; });
@@ -56,11 +82,11 @@ class Cdp {
       if (m.id !== undefined) { this.pending.get(m.id)?.(m.result ?? m.error); this.pending.delete(m.id); }
     };
   }
-  send(method: string, params: any = {}, sessionId?: string) {
+  send(method: string, params: Record<string, unknown> = {}, sessionId?: string): Promise<CdpPayload> {
     const id = ++this.id;
-    return new Promise<any>((r) => { this.pending.set(id, r); this.ws.send(JSON.stringify({ id, method, params, sessionId })); });
+    return new Promise<CdpPayload>((r) => { this.pending.set(id, r); this.ws.send(JSON.stringify({ id, method, params, sessionId })); });
   }
-  async eval(e: string, s: string) {
+  async eval(e: string, s?: string): Promise<EvalResult> {
     const r = await this.send('Runtime.evaluate', { expression: e, awaitPromise: true, returnByValue: true }, s);
     if (r?.exceptionDetails) return { __err: r.exceptionDetails.text };
     return r?.result?.value;
@@ -75,7 +101,11 @@ try {
   const b = new Cdp();
   await b.connect(await waitForDevTools());
   const { targetId } = await b.send('Target.createTarget', { url: 'about:blank' });
-  const { sessionId } = await b.send('Target.attachToTarget', { targetId, flatten: true });
+  const attached = await b.send('Target.attachToTarget', { targetId, flatten: true });
+  // The protocol always answers a string here, but it arrives as untyped JSON.
+  // Narrowing it once — rather than casting at every call — keeps the rest of
+  // the script free of casts and still fails loudly if that ever changes.
+  const sessionId = typeof attached.sessionId === 'string' ? attached.sessionId : undefined;
   await b.send('Runtime.enable', {}, sessionId);
   await b.send('Page.enable', {}, sessionId);
 
@@ -100,8 +130,8 @@ try {
     f.requestSubmit();
     return 'ok';
   })()`, sessionId);
-  let path = '/admin/login';
-  for (let i = 0; i < 30; i++) { await sleep(1000); path = await b.eval('location.pathname', sessionId); if (path !== '/admin/login') break; }
+  let path: string = '/admin/login';
+  for (let i = 0; i < 30; i++) { await sleep(1000); path = String(await b.eval('location.pathname', sessionId)); if (path !== '/admin/login') break; }
   check('signed in', path !== '/admin/login', path);
   console.log(`  at ${path}`);
 
