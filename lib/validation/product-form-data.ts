@@ -16,7 +16,32 @@
  * data. That makes the whole submission path testable without a database, and it
  * is the reason the row-limit fix can be verified against the real
  * implementation rather than a copy of it.
+ *
+ * SERVER-ONLY
+ * This module must not be imported by a Client Component. The official
+ * `server-only` package would express that intent more directly, but it is
+ * deliberately not a dependency of this project — see the same note in
+ * `lib/data/products.ts`, which is also where the guard below is explained.
+ *
+ * Unlike the modules under `lib/data/`, this one has NO structural protection:
+ * those import `@/lib/db/prisma`, and the Prisma driver cannot be bundled for a
+ * browser, so a stray client import fails the build on its own. This module
+ * imports only `zod` and pure local helpers, all of which bundle perfectly well
+ * for the browser — a stray import would therefore build cleanly and ship the
+ * whole product schema to the client. The runtime guard below is therefore the
+ * only thing standing between an accident and that regression, which is exactly
+ * why it is here.
+ *
+ * The client-safe sibling is `product-rows.ts`, which deliberately imports
+ * nothing at all; `ProductForm.tsx` and `ProductImageUploader.tsx` use that one
+ * to share `MAX_PRODUCT_ROWS` without dragging a schema into the bundle.
  */
+
+if (typeof window !== 'undefined') {
+  throw new Error(
+    'lib/validation/product-form-data.ts is server-only and must not be imported by a Client Component.'
+  );
+}
 
 import {
   createProductSchema,
