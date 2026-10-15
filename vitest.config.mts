@@ -17,8 +17,9 @@ import { fileURLToPath } from 'node:url';
  *     change to the real code. See tests/unit/README.md.
  *   - `test-row-cap-browser.mts` — needs a running dev server, a real Chrome and
  *     a signed-in admin. An integration test, deliberately excluded here.
- *   - `verify-e2e.mts`, `verify-form-reset.mts`, `verify-form-source.mts` — the
- *     pre-existing manual harnesses, untouched by this phase.
+ *   - `verify-e2e.mts`, `verify-form-reset.mts` — the pre-existing manual
+ *     harnesses. `verify-form-source.mts` is also a static source check rather
+ *     than a Vitest suite; it has its own command, `npm run verify:forms`.
  *
  * ENVIRONMENT
  * `environment: 'node'` and no setup file: every module under test

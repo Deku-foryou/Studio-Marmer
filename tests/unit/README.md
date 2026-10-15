@@ -34,7 +34,7 @@ not have. **None of them are run by `npm test`.**
 | `test-row-cap-browser.mts` | running dev server + real Chrome + signed-in admin | Integration |
 | `verify-e2e.mts` | running server + MySQL | Integration |
 | `verify-form-reset.mts` | running server | Integration |
-| `verify-form-source.mts` | none | Static source check |
+| `verify-form-source.mts` | none | Static source check; run via `npm run verify:forms` |
 
 ### Known limitation of `test-row-limit-action.mts`
 

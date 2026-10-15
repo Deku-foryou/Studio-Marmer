@@ -5,6 +5,22 @@
  * type in different ways, and it is easy to reintroduce the bug later by adding
  * one `defaultValue` to a new field. This asserts the shape directly on the real
  * source files, so a regression fails here rather than in a browser.
+ *
+ *     npx tsx verify-form-source.mts      # or: npm run verify:forms
+ *
+ * Two rules this file deliberately does NOT enforce, because the surrounding code
+ * contradicts them:
+ *
+ *   - `type="hidden"` inputs do not need an `onChange`. Every uploader holds its
+ *     media in React state and mirrors it into a hidden field purely to submit it.
+ *     A hidden input has nothing for the admin to interact with, so requiring a
+ *     handler would flag the pattern this file's own last check endorses.
+ *   - Checkboxes do not carry a `value` prop. The browser's default checkbox
+ *     value is `"on"`, and every server action depends on exactly that:
+ *     `produk/actions.ts` (`isAvailable`/`isUniquePiece`/`isFeatured`/
+ *     `whatsappEnabled`), `kategori/actions.ts` and `galeri/actions.ts`
+ *     (`isActive`) all read `formData.get(<name>) === 'on'`. Adding a `value` to
+ *     one of these inputs would silently break that read, not fix anything.
  */
 import { readFileSync } from 'node:fs';
 
@@ -38,20 +54,73 @@ function stripComments(source: string): string {
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 }
 
+/**
+ * Finds the `>` that closes an opening tag, starting from just after the tag name.
+ *
+ * A regex such as `/<(input|select|textarea)\b([^>]*?)\/?>/` cannot do this: it
+ * stops at the first `>` it finds, and every controlled input in this codebase has
+ * an `onChange={(e) => ...}` whose arrow swallows that character. The attribute
+ * capture would end mid-expression, silently hiding every attribute after it —
+ * including `key`, which is exactly what the checkbox and select checks assert on.
+ *
+ * So the tag is scanned by hand instead, tracking only what can actually appear
+ * inside a JSX attribute list:
+ *
+ *   - `{}` nesting, so a `>` inside any expression is ignored at depth > 0;
+ *   - `"`, `'` and `` ` `` string literals, so a `>` inside a string is ignored;
+ *   - backslash escapes inside those literals.
+ *
+ * `${...}` inside a template literal needs no special case: its braces balance,
+ * so the depth counter stays correct on its own.
+ *
+ * @returns the index of the closing `>`, or -1 when the tag is never closed.
+ */
+function findTagEnd(source: string, from: number): number {
+  let depth = 0;
+  let quote: string | null = null;
+
+  for (let i = from; i < source.length; i += 1) {
+    const char = source[i];
+
+    if (quote !== null) {
+      if (char === '\\') i += 1;
+      else if (char === quote) quote = null;
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+    } else if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      if (depth > 0) depth -= 1;
+    } else if (char === '>' && depth === 0) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 /** Every opening tag for a form control, with its attributes. */
 function controlTags(source: string): { name: string; tag: string; attrs: string }[] {
   const out: { name: string; tag: string; attrs: string }[] = [];
+  // The lookahead keeps `<input` from matching a longer tag name, and the
+  // closing `</input>` cannot match at all because of the literal `<`.
+  const pattern = /<(input|select|textarea)(?=[\s/>])/g;
 
-  // Matches <input ...>, <select ...>, <textarea ...> up to the closing bracket.
-  const pattern = /<(input|select|textarea)\b([^>]*?)\/?>/g;
   let match: RegExpExecArray | null;
-
   while ((match = pattern.exec(source)) !== null) {
-    const [, tag, attrs] = match;
-    const nameMatch = /\bname=\{?[`'"]([^`'"]+)[`'"]/.exec(attrs);
-    const name = nameMatch ? nameMatch[1] : '';
+    const attrsStart = match.index + match[0].length;
+    const end = findTagEnd(source, attrsStart);
+    if (end === -1) break;
 
-    out.push({ name, tag, attrs });
+    const attrs = source.slice(attrsStart, end);
+    const nameMatch = /\bname=\{?[`'"]([^`'"]+)[`'"]/.exec(attrs);
+    out.push({ name: nameMatch ? nameMatch[1] : '', tag: match[1], attrs });
+
+    // Resume after the tag so its inner markup is not rescanned for controls.
+    pattern.lastIndex = end;
   }
 
   return out;
@@ -74,18 +143,26 @@ function hasKey(attrs: string): boolean {
   return /\bkey=/.test(attrs);
 }
 
+/**
+ * True for the input types that are deliberately not controlled from React:
+ *
+ *   - `file` — a browser cannot repopulate a file picker, and it holds no value
+ *     that needs preserving;
+ *   - `hidden` — driven from React state to be submitted, never edited. It is
+ *     still subject to the `defaultValue` check below, since a hidden field set
+ *     with `defaultValue` would suffer the same React 19 reset as any other.
+ */
+function isUncontrolledInputType(attrs: string): boolean {
+  return /type="file"/.test(attrs) || /type="hidden"/.test(attrs);
+}
+
 console.log('--- No uncontrolled defaultValue inputs remain ---');
 for (const file of FORMS) {
   const source = stripComments(readFileSync(file, 'utf8'));
   const controls = controlTags(source);
 
-  // The file inputs are genuinely uncontrolled: a browser cannot repopulate a
-  // file picker, and these hold no value that needs preserving.
   const offenders = controls.filter(
-    (control) =>
-      control.tag === 'input' &&
-      /type="file"/.test(control.attrs) === false &&
-      hasDefaultValue(control.attrs)
+    (control) => control.tag === 'input' && !isUncontrolledInputType(control.attrs) && hasDefaultValue(control.attrs)
   );
 
   check(
@@ -100,16 +177,18 @@ for (const file of FORMS) {
   const source = stripComments(readFileSync(file, 'utf8'));
   const controls = controlTags(source);
 
+  // Hidden inputs are excluded: they carry a value with no handler by design,
+  // so requiring `onChange` on them would flag the uploader pattern itself.
   const incomplete = controls.filter(
     (control) =>
       control.tag === 'input' &&
-      /type="file"/.test(control.attrs) === false &&
+      !isUncontrolledInputType(control.attrs) &&
       hasValueProp(control.attrs) &&
       !hasOnChange(control.attrs)
   );
 
   check(
-    `${file}: every valued input has an onChange`,
+    `${file}: every visible valued input has an onChange`,
     incomplete.length === 0,
     incomplete.map((o) => o.name || o.attrs.slice(0, 60))
   );
@@ -124,12 +203,11 @@ for (const file of FORMS) {
 
   if (checkboxes.length === 0) continue;
 
+  // No `value` requirement: the actions read these as `=== 'on'`, which is the
+  // browser default for a checkbox that does not set one.
   const broken = checkboxes.filter(
     (control) =>
-      !hasValueProp(control.attrs) ||
-      !/checked=\{/.test(control.attrs) ||
-      !hasOnChange(control.attrs) ||
-      !hasKey(control.attrs)
+      !/checked=\{/.test(control.attrs) || !hasOnChange(control.attrs) || !hasKey(control.attrs)
   );
 
   check(
@@ -148,9 +226,7 @@ for (const file of FORMS) {
 
   const broken = selects.filter(
     (control) =>
-      !hasValueProp(control.attrs) ||
-      !hasOnChange(control.attrs) ||
-      !hasKey(control.attrs)
+      !hasValueProp(control.attrs) || !hasOnChange(control.attrs) || !hasKey(control.attrs)
   );
 
   check(

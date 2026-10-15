@@ -134,6 +134,7 @@ Models:
 | `npm run lint` | Run ESLint |
 | `npm test` | Run the Vitest unit suite |
 | `npm run test:scripts` | Run the root-level schema/overflow cross-check scripts |
+| `npm run verify:forms` | Static source check on the admin forms (no browser or server needed) |
 | `npm run measure:home-client` | Report the homepage's client JS (raw + gzip) from the build manifest |
 
 ---
