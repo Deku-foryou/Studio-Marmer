@@ -1,261 +1,189 @@
-# Dokumentasi Pengguna Studio Marmer
+# Panduan Pengguna Studio Marmer
 
-Panduan ini ditujukan untuk pemilik usaha dan pengelola situs Studio Marmer. Isinya menjelaskan cara menggunakan situs dari sisi pengunjung dan admin dengan bahasa nonteknis.
+**Sasaran pembaca:** pemilik usaha dan pengelola konten  
+**Tujuan:** menjelaskan penggunaan situs publik dan area administrasi.
 
-> **Penting:** Nama menu, tombol, dan hak akses dapat berbeda mengikuti versi situs yang sedang dipakai. Gunakan panduan ini bersama tampilan aktual aplikasi. Jangan membagikan kata sandi admin atau informasi rahasia.
+Dokumen ini menjelaskan alur penggunaan berdasarkan fungsi proyek yang diketahui. Nama tombol dan susunan menu dapat berbeda menurut versi deployment. Jika tampilan aplikasi tidak sesuai dengan panduan, gunakan antarmuka aktual sebagai acuan dan minta konfirmasi pengelola teknis.
 
-## Daftar Isi
+## 1. Fungsi Situs
 
-1. [Mengenal Studio Marmer](#1-mengenal-studio-marmer)
-2. [Peran Pengguna](#2-peran-pengguna)
-3. [Mengakses Situs](#3-mengakses-situs)
-4. [Panduan Pengunjung](#4-panduan-pengunjung)
-5. [Masuk ke Area Admin](#5-masuk-ke-area-admin)
-6. [Mengelola Produk](#6-mengelola-produk)
-7. [Mengelola Kategori](#7-mengelola-kategori)
-8. [Mengelola Galeri](#8-mengelola-galeri)
-9. [Mengatur Konten Situs](#9-mengatur-konten-situs)
-10. [Panduan Foto Produk](#10-panduan-foto-produk)
-11. [Praktik Pengelolaan yang Disarankan](#11-praktik-pengelolaan-yang-disarankan)
-12. [Pemecahan Masalah](#12-pemecahan-masalah)
-13. [Keamanan Akun](#13-keamanan-akun)
-14. [Daftar Periksa Sebelum Publikasi](#14-daftar-periksa-sebelum-publikasi)
+Studio Marmer digunakan untuk:
+- Menampilkan katalog dan detail produk kerajinan marmer.
+- Menyajikan foto serta informasi usaha.
+- Menyediakan tautan kontak atau kanal penjualan eksternal.
+- Memberi pengelola akses untuk memperbarui data produk dan konten yang didukung aplikasi.
 
-## 1. Mengenal Studio Marmer
+Situs ini tidak boleh dianggap menyediakan pembayaran internal atau pengelolaan pesanan menyeluruh kecuali fitur tersebut telah ditambahkan dan diuji secara terpisah.
 
-Studio Marmer adalah situs katalog untuk memperkenalkan produk kerajinan marmer kepada calon pelanggan. Pengunjung dapat melihat produk, membaca detail, melihat foto, lalu menghubungi pengelola atau membuka tautan transaksi eksternal yang tersedia.
+## 2. Menggunakan Situs sebagai Pengunjung
 
-Situs memiliki area admin untuk membantu pengelola memperbarui informasi tanpa harus mengubah kode program secara langsung.
+### Melihat produk
+1. Buka alamat situs resmi.
+2. Cari bagian katalog di beranda.
+3. Pilih produk untuk membuka detailnya.
+4. Periksa deskripsi, harga, ukuran, ketersediaan, dan foto yang tersedia.
 
-## 2. Peran Pengguna
+### Menghubungi pengelola
+Gunakan tautan Shopee atau WhatsApp jika ditampilkan. Tautan tersebut mengarah ke layanan eksternal. Periksa kembali rincian dan harga dengan pengelola sebelum melakukan transaksi.
 
-Secara umum terdapat dua kelompok pengguna:
+### Melihat informasi usaha
+Gunakan bagian Tentang Kami, Galeri, dan Kontak untuk membaca informasi yang dipublikasikan.
 
-- **Pengunjung:** melihat informasi dan katalog produk.
-- **Admin/pengelola:** masuk ke area admin untuk mengelola konten sesuai hak akses.
+## 3. Login Admin
 
-Sistem mencatat peran `ADMIN` dan `EDITOR`. Hak akses tepat untuk setiap peran mengikuti konfigurasi sistem. Jika suatu menu tidak tersedia, akun tersebut mungkin tidak memiliki izin untuk menggunakannya.
+Rute login yang tercatat pada proyek adalah `/admin/login`. Alamat lengkap mengikuti domain deployment.
 
-## 3. Mengakses Situs
-
-1. Buka alamat situs yang diberikan oleh pemilik atau pengelola.
-2. Pastikan alamat domain benar dan menggunakan HTTPS jika sudah diterapkan.
-3. Gunakan menu navigasi untuk membuka bagian situs.
-4. Jika halaman tidak terbuka, periksa koneksi internet atau hubungi pengelola.
-
-Alamat produksi tidak dicantumkan dalam dokumen ini karena perlu diisi sesuai domain yang benar-benar digunakan.
-
-## 4. Panduan Pengunjung
-
-### Melihat katalog
-
-1. Buka beranda situs.
-2. Cari bagian katalog produk.
-3. Telusuri produk yang ditampilkan.
-4. Pilih produk untuk membuka halaman detail.
-
-### Membaca detail produk
-
-Pada halaman detail, informasi yang tersedia dapat mencakup nama, foto, deskripsi, harga, jenis batu, warna, dimensi, berat, spesifikasi, estimasi pengerjaan, dan status ketersediaan. Tidak semua informasi harus terisi pada setiap produk.
-
-### Menghubungi penjual
-
-Jika tersedia, gunakan tautan Shopee atau tombol WhatsApp pada halaman produk. Tautan tersebut membuka layanan eksternal. Pastikan detail produk dan harga telah dikonfirmasi dengan pengelola sebelum melakukan transaksi.
-
-### Melihat galeri dan informasi usaha
-
-Gunakan bagian Galeri untuk melihat foto pilihan, bagian Tentang Kami untuk mengenal usaha, dan bagian Kontak untuk mencari informasi hubungan yang disediakan.
-
-## 5. Masuk ke Area Admin
-
-1. Buka alamat login admin yang diberikan oleh pengelola sistem. Pada konfigurasi proyek, rute login tercatat sebagai `/admin/login`.
-2. Masukkan email dan kata sandi admin yang sudah diberikan secara aman.
-3. Tekan tombol masuk.
-4. Jika berhasil, sistem akan membuka area admin sesuai hak akses akun.
+1. Buka halaman login admin.
+2. Masukkan kredensial yang diberikan administrator melalui jalur aman.
+3. Kirim formulir login.
+4. Setelah berhasil, gunakan menu yang tersedia sesuai peran akun.
 
 Jika login gagal:
-- Periksa apakah email dan kata sandi sudah benar.
-- Pastikan Caps Lock tidak aktif tanpa sengaja.
-- Periksa koneksi dan status situs.
-- Jangan mencoba menebak kata sandi berulang kali.
-- Hubungi administrator jika akun belum dibuat, dinonaktifkan, atau perlu direset.
+- Pastikan alamat email dan kata sandi benar.
+- Periksa Caps Lock dan koneksi jaringan.
+- Pastikan akun telah dibuat dan masih aktif.
+- Hubungi administrator untuk pemeriksaan akun.
 
-Jangan menuliskan kata sandi di catatan publik, tangkapan layar, atau dokumen panduan.
+Jangan menuliskan kredensial pada dokumen, tangkapan layar, atau kanal komunikasi publik.
 
-## 6. Mengelola Produk
+## 4. Mengelola Produk
 
-Nama tombol dapat berbeda sesuai versi admin. Ikuti kontrol yang tersedia pada halaman produk.
+Nama menu dan tombol mengikuti versi admin yang aktif. Secara umum, proses pengelolaan produk adalah sebagai berikut.
 
 ### Menambahkan produk
+1. Masuk ke area admin.
+2. Buka pengelolaan produk.
+3. Pilih fungsi tambah produk.
+4. Isi field yang tersedia pada formulir.
+5. Unggah atau pilih foto jika fungsi tersebut tersedia.
+6. Periksa kembali data.
+7. Simpan.
+8. Buka situs publik untuk memverifikasi hasilnya.
 
-1. Masuk ke admin.
-2. Buka menu pengelolaan produk.
-3. Pilih tindakan tambah produk.
-4. Isi informasi yang diminta pada formulir.
-5. Tambahkan foto produk sesuai mekanisme unggah yang tersedia.
-6. Periksa kembali ejaan, harga, dimensi, spesifikasi, dan status ketersediaan.
-7. Simpan produk.
-8. Buka halaman publik produk untuk memastikan informasi tampil dengan benar.
+### Mengisi data produk
 
-### Mengisi informasi produk
-
-| Informasi | Panduan |
+| Field | Panduan pengisian |
 |---|---|
-| Nama produk | Gunakan nama yang jelas dan mudah dibedakan |
-| Slug/URL | Gunakan format yang mudah dibaca; jika dibuat otomatis, periksa hasilnya |
-| Deskripsi | Jelaskan bahan, kegunaan, karakteristik, dan hal penting lainnya |
-| Harga | Masukkan harga sesuai kebijakan usaha dan format formulir |
-| Jenis batu | Cantumkan jenis batu yang benar |
-| Warna | Gunakan deskripsi warna yang sesuai produk sebenarnya |
-| Dimensi | Cantumkan ukuran dan satuan dengan konsisten |
-| Berat | Isi jika diketahui dan relevan |
-| Spesifikasi | Tambahkan rincian yang membantu pembeli memahami produk |
-| Waktu pengerjaan | Berikan estimasi realistis jika tersedia |
-| Ketersediaan | Perbarui ketika stok atau kemampuan produksi berubah |
-| Foto | Pilih foto produk yang jelas dan sesuai |
-| Produk unggulan | Aktifkan hanya untuk produk yang ingin ditonjolkan |
-| Tautan Shopee | Gunakan tautan produk yang benar jika tersedia |
-| WhatsApp | Aktifkan sesuai pengaturan yang disediakan |
+| Nama | Nama yang jelas dan membedakan produk |
+| Deskripsi | Informasi faktual mengenai produk |
+| Harga | Harga yang telah disetujui pemilik usaha |
+| Jenis batu | Jenis material yang benar |
+| Warna | Deskripsi warna yang sesuai produk |
+| Dimensi | Ukuran beserta satuan yang konsisten |
+| Berat | Isi jika tersedia dan relevan |
+| Spesifikasi | Rincian teknis yang dibutuhkan pembeli |
+| Waktu pengerjaan | Estimasi realistis jika diterapkan |
+| Ketersediaan | Status terkini |
+| Foto | Foto produk yang sesuai dan layak dipublikasikan |
+| Produk unggulan | Aktifkan jika produk perlu ditonjolkan |
+| Shopee/WhatsApp | Tautan yang telah diverifikasi |
 
-Kolom wajib dan batas maksimum ditentukan oleh formulir. Ikuti pesan validasi yang muncul jika penyimpanan ditolak.
+Field wajib, batas jumlah spesifikasi/foto, dan format input mengikuti validasi pada formulir aktual. Jika penyimpanan ditolak, baca pesan validasi dan koreksi field terkait.
 
 ### Mengubah produk
-
 1. Buka daftar produk.
-2. Pilih produk yang ingin diubah.
-3. Perbarui informasi yang diperlukan.
-4. Periksa foto dan tautan eksternal.
-5. Simpan perubahan.
-6. Periksa hasilnya di halaman publik.
+2. Pilih produk yang hendak diperbarui.
+3. Ubah field yang diperlukan.
+4. Simpan perubahan.
+5. Periksa halaman publik.
 
-Sebelum mengubah slug atau menghapus foto, periksa apakah tautan tersebut sedang digunakan pada materi promosi atau halaman lain.
+Sebelum mengubah slug atau tautan, pertimbangkan apakah alamat tersebut telah digunakan pada materi promosi.
 
 ### Menghapus produk
+1. Pastikan penghapusan memang diperlukan.
+2. Periksa dampaknya terhadap tampilan publik dan media terkait.
+3. Gunakan fungsi hapus pada admin.
+4. Verifikasi hasilnya.
 
-1. Pastikan produk memang tidak lagi perlu ditampilkan.
-2. Periksa apakah penghapusan bersifat permanen dan apakah foto terkait ikut dihapus.
-3. Jalankan tindakan hapus melalui antarmuka admin.
-4. Periksa katalog publik setelah tindakan selesai.
+Jangan menghapus data hanya untuk menyembunyikan produk sementara. Gunakan status ketersediaan jika fungsi itu memenuhi kebutuhan.
 
-Jika ragu, jangan menghapus produk. Nonaktifkan atau ubah status ketersediaan jika fitur tersebut tersedia.
+## 5. Mengelola Kategori
 
-### Produk unggulan dan ketersediaan
+1. Buka menu kategori.
+2. Pilih tambah atau edit sesuai kebutuhan.
+3. Isi informasi yang diminta.
+4. Simpan perubahan.
+5. Periksa hasilnya di admin dan situs publik jika kategori ditampilkan.
 
-Gunakan penanda unggulan untuk produk yang ingin lebih terlihat. Perbarui status ketersediaan dengan jujur agar calon pembeli tidak memperoleh informasi yang sudah kedaluwarsa.
+Sebelum menghapus kategori, periksa hubungannya dengan produk. Efek penghapusan bergantung pada aturan aplikasi.
 
-## 7. Mengelola Kategori
-
-1. Buka menu kategori pada admin.
-2. Tambahkan kategori baru atau pilih kategori yang sudah ada.
-3. Isi nama dan informasi lain yang diminta.
-4. Jika tersedia, pilih gambar kategori.
-5. Simpan dan periksa hasilnya.
-
-Sebelum menghapus kategori, periksa apakah kategori tersebut digunakan oleh produk. Perilaku penghapusan dan hubungan produk mengikuti aturan yang diterapkan oleh sistem.
-
-## 8. Mengelola Galeri
+## 6. Mengelola Galeri
 
 1. Buka menu galeri.
-2. Tambahkan foto atau pilih foto yang sudah tersimpan.
-3. Isi judul, deskripsi, atau informasi lain jika formulir menyediakannya.
-4. Simpan perubahan.
-5. Buka halaman publik dan pastikan foto muncul dengan benar.
+2. Tambahkan atau pilih item galeri.
+3. Isi judul/deskripsi jika field tersebut tersedia.
+4. Simpan.
+5. Periksa apakah gambar tampil di situs publik.
 
-Gunakan foto yang relevan dengan usaha, beresolusi cukup, dan memiliki hak penggunaan. Hindari mengunggah foto yang memuat data pribadi atau informasi pelanggan tanpa izin.
+Publikasikan hanya foto yang boleh digunakan oleh usaha. Hindari gambar yang memuat informasi pribadi tanpa izin.
 
-## 9. Mengatur Konten Situs
+## 7. Mengatur Konten Situs
 
-Area pengaturan situs dapat menyediakan pengelolaan konten seperti gambar hero, logo, atau informasi lain. Ketersediaan kolom bergantung pada versi aplikasi.
-
-1. Buka menu pengaturan situs.
-2. Periksa nilai yang sudah ada sebelum menggantinya.
-3. Ubah hanya bagian yang memang diperlukan.
-4. Simpan perubahan.
+Jika menu pengaturan situs tersedia:
+1. Buka pengaturan.
+2. Catat atau salin nilai lama sebelum menggantinya.
+3. Ubah hanya field yang diperlukan.
+4. Simpan.
 5. Periksa halaman publik pada desktop dan ponsel.
 
-Simpan salinan teks dan URL gambar lama sebelum menggantinya agar pemulihan lebih mudah jika hasil baru bermasalah.
+Tidak semua versi aplikasi menyediakan field yang sama. Jangan mengubah pengaturan teknis tanpa arahan pengelola sistem.
 
-## 10. Panduan Foto Produk
+## 8. Pengelolaan Foto
 
-### Foto yang disarankan
-- Gunakan pencahayaan yang cukup.
-- Tampilkan produk dari sudut yang membantu pembeli memahami bentuknya.
-- Gunakan latar belakang yang tidak mengganggu.
-- Pastikan warna foto mendekati kondisi produk sebenarnya.
-- Kompres gambar agar halaman tetap cepat dibuka.
-- Gunakan foto yang diizinkan untuk dipublikasikan.
+Gunakan gambar yang jelas, relevan, dan memiliki hak publikasi. Hindari file berukuran sangat besar jika versi gambar yang lebih ringan dapat digunakan tanpa mengurangi kualitas secara berarti.
 
-### Jika menggunakan URL gambar
+Jika memasukkan URL gambar:
+- Pastikan URL benar dan dapat diakses.
+- Periksa protokol dan sumber gambar yang diizinkan konfigurasi situs.
+- Ingat bahwa URL yang valid secara format belum tentu bisa ditampilkan oleh Next.js Image.
+- Jika gambar gagal muncul, jangan mengubah konfigurasi server sendiri. Catat URL dan pesan error yang terlihat, lalu hubungi pengelola teknis.
 
-Konfigurasi Next.js Image pada proyek tercatat membatasi host gambar eksternal. Host yang tercatat adalah `res.cloudinary.com` dan `images.unsplash.com`, dengan HTTPS serta aturan path tertentu. Konfigurasi produksi terbaru harus diperiksa sebelum menggunakan sumber lain.
+Jangan membagikan API secret Cloudinary atau kredensial lain.
 
-URL yang terlihat benar belum tentu bisa ditampilkan. Jika gambar tidak muncul:
-1. Periksa apakah URL dapat dibuka.
-2. Pastikan protokolnya HTTPS jika dibutuhkan.
-3. Pastikan host dan path sesuai konfigurasi situs.
-4. Simpan ulang hanya setelah sumber gambar dipastikan benar.
-5. Hubungi pengelola teknis jika masalah berlanjut.
+## 9. Pemeriksaan Setelah Perubahan
 
-Jangan memasukkan secret Cloudinary ke kolom URL atau membagikannya kepada orang lain.
+Setelah memperbarui konten, periksa:
+- Nama, deskripsi, harga, dan spesifikasi.
+- Status ketersediaan.
+- Foto dan urutannya.
+- Tautan Shopee atau WhatsApp.
+- Tampilan di desktop dan ponsel.
+- Apakah perubahan tersimpan dan tampil pada halaman yang benar.
 
-## 11. Praktik Pengelolaan yang Disarankan
+## 10. Pemecahan Masalah
 
-- Periksa harga dan ketersediaan secara berkala.
-- Gunakan penamaan produk yang konsisten.
-- Tulis deskripsi berdasarkan fakta produk.
-- Periksa ejaan sebelum menyimpan.
-- Pastikan tautan Shopee dan WhatsApp masih aktif.
-- Gunakan foto yang benar dan tidak menyesatkan.
-- Setelah perubahan, buka situs publik untuk memastikan hasilnya.
-- Hindari mengubah banyak bagian sekaligus jika belum terbiasa.
-- Catat perubahan penting agar tim dapat mengetahui apa yang berubah.
-
-## 12. Pemecahan Masalah
-
-| Masalah | Langkah awal |
+| Kendala | Tindakan awal |
 |---|---|
-| Tidak bisa login | Periksa email, kata sandi, koneksi, dan status akun |
-| Produk tidak tersimpan | Baca pesan validasi; periksa kolom wajib dan format data |
-| Foto tidak muncul | Periksa URL, format HTTPS, host/path yang diizinkan, dan status layanan gambar |
-| Perubahan tidak terlihat | Muat ulang halaman; periksa apakah perubahan berhasil disimpan |
-| Tautan Shopee tidak benar | Periksa URL produk di admin dan buka kembali tautannya |
-| WhatsApp tidak terbuka | Periksa pengaturan dan nomor/tautan WhatsApp yang digunakan |
-| Menu admin tidak tersedia | Periksa hak akses akun atau hubungi administrator |
-| Situs tidak bisa dibuka | Periksa jaringan dan hubungi pengelola teknis; jangan mengubah konfigurasi server sendiri |
+| Login ditolak | Periksa kredensial, status akun, dan koneksi |
+| Produk gagal disimpan | Baca pesan validasi dan periksa field wajib |
+| Foto tidak muncul | Periksa URL, sumber gambar, dan pesan error |
+| Perubahan belum terlihat | Muat ulang halaman dan pastikan penyimpanan berhasil |
+| Tautan eksternal salah | Periksa kembali URL pada data produk |
+| Menu tidak tersedia | Pastikan peran akun memiliki izin |
+| Situs tidak dapat dibuka | Periksa koneksi dan hubungi pengelola teknis |
 
-Jika menghubungi dukungan teknis, sertakan:
-- Waktu kejadian.
-- Halaman atau menu yang digunakan.
-- Langkah yang dilakukan sebelum masalah muncul.
-- Pesan error yang terlihat.
-- Tangkapan layar yang tidak menampilkan password, token, atau data rahasia.
+Saat melaporkan masalah, sertakan waktu kejadian, halaman yang digunakan, langkah sebelum error, dan pesan error. Jangan sertakan password, token, atau secret dalam tangkapan layar.
 
-## 13. Keamanan Akun
+## 11. Keamanan Akun
 
-- Jangan membagikan akun kepada orang yang tidak berwenang.
-- Gunakan kata sandi kuat dan unik.
-- Keluar dari admin setelah menggunakan komputer bersama.
-- Jangan menyimpan kata sandi pada dokumen terbuka.
-- Beri akses hanya kepada orang yang memerlukannya.
-- Laporkan aktivitas yang tidak dikenal kepada pemilik atau administrator.
-- Jangan mengirim berkas `.env`, token, atau secret melalui chat umum.
+- Gunakan kata sandi unik.
+- Jangan membagikan akun kepada pihak yang tidak berwenang.
+- Keluar dari admin setelah memakai perangkat bersama.
+- Berikan akses sesuai tanggung jawab.
+- Laporkan aktivitas yang tidak dikenal.
+- Jangan mengirim file `.env`, token, atau secret melalui kanal umum.
 
-## 14. Daftar Periksa Sebelum Publikasi
+## 12. Daftar Periksa Publikasi
 
-Sebelum produk atau perubahan konten dianggap selesai, periksa:
-
-- [ ] Nama dan deskripsi sudah benar.
-- [ ] Harga sudah sesuai.
-- [ ] Dimensi, warna, jenis batu, dan spesifikasi sudah diperiksa.
-- [ ] Status ketersediaan sudah diperbarui.
-- [ ] Foto tampil dengan benar.
-- [ ] Tautan Shopee/WhatsApp berfungsi jika digunakan.
-- [ ] Tampilan sudah diperiksa di ponsel dan desktop.
-- [ ] Tidak ada informasi internal atau rahasia yang ikut dipublikasikan.
+- [ ] Data produk telah diperiksa.
+- [ ] Harga dan status ketersediaan benar.
+- [ ] Foto sesuai dengan produk.
+- [ ] Tautan eksternal berfungsi.
+- [ ] Tampilan mobile dan desktop telah diperiksa.
+- [ ] Tidak ada data internal atau rahasia yang terpublikasi.
 
 ---
 
-**Dokumen:** Dokumentasi Pengguna Studio Marmer  
+**Dokumen:** Panduan Pengguna Studio Marmer  
 **Bahasa:** Indonesia  
-**Pembaca:** Pemilik usaha, pengelola konten, dan admin  
-**Catatan:** Sesuaikan alamat situs, nama menu, dan prosedur yang bergantung pada deployment dengan versi aplikasi yang benar-benar digunakan.
+**Pemeliharaan:** perbarui dokumen ketika alur admin, fitur, atau deployment berubah.
