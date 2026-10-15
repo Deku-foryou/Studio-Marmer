@@ -137,9 +137,34 @@ Models:
 | `npm run test:row-action` | Replay the product row-limit action path (no prerequisites) |
 | `npm run verify:form-reset` | React 19 form-reset DOM check (no prerequisites) |
 | `npm run verify:forms` | Static source check on the admin forms (no prerequisites) |
-| `npm run test:row-cap-browser` | Browser check of the row-cap UI — needs a running dev server, Chrome, and a signed-in admin |
-| `npm run verify:e2e` | End-to-end smoke test — needs a running server and MySQL |
+| `npm run test:row-cap-browser` | Browser check of the row-cap UI — **needs a running dev server, Chrome, and admin credentials** |
+| `npm run verify:e2e` | End-to-end smoke test — **needs a running server, MySQL, and admin credentials** |
 | `npm run measure:home-client` | Report the homepage's client JS (raw + gzip) from the build manifest |
+
+#### Browser and end-to-end checks
+
+`test:row-cap-browser` and `verify:e2e` are the only two commands that need a
+running application. Both load `.env` themselves via
+`tsx --env-file-if-exists=.env`, so there is nothing to export by hand on a normal
+checkout. The flag is `-if-exists` on purpose: a machine with no `.env` — a CI
+runner that supplies real environment variables instead — still starts, and then
+reports what is missing.
+
+Each script checks its own prerequisites before doing any work and stops with the
+names of what is missing. **Variable names are reported; values never are.**
+
+| | `test:row-cap-browser` | `verify:e2e` |
+| --- | --- | --- |
+| Server | `npm run dev`, listening on `BASE_URL` | production build on `BASE_URL` |
+| Default `BASE_URL` | `http://localhost:3000` | `http://127.0.0.1:3111` |
+| Database | reachable MySQL | reachable MySQL with seeded data |
+| Credentials | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | same |
+| Browser | `CHROME_PATH`, or the default Windows Chrome | none |
+
+All three `BASE_URL`, `CHROME_PATH` and the two credential names come from
+`.env`; see `.env.example` for the full list. The browser harness starts only
+after the preflight passes, so a missing prerequisite never leaves a headless
+Chrome process behind.
 
 ---
 

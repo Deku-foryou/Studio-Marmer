@@ -4,8 +4,74 @@
  * Signs in with the seeded admin over HTTP, exercises the product and category
  * CRUD through the real pages, and checks that a redirect carrying a toast key
  * lands on a page that renders it. Creates and removes only its own fixtures.
+ *
+ *   npm run verify:e2e
+ *
+ * PREREQUISITES (all three, or this script cannot run)
+ *   1. A server already running and listening on BASE_URL (default
+ *      http://127.0.0.1:3111) with the production build.
+ *   2. A reachable MySQL holding the seeded data.
+ *   3. `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in the environment.
+ *
+ * The npm command runs `tsx --env-file-if-exists=.env`, so a local `.env`
+ * supplies the credentials without exporting anything by hand. That flag is
+ * `-if-exists` on purpose: a machine with no `.env` — a CI runner fed real
+ * environment variables, say — must still start, and the preflight below then
+ * reports what is missing rather than dying on a file-not-found from Node.
+ *
+ * `preflight()` checks all of this before a single request is made, because the
+ * failure modes are otherwise indistinguishable: a missing credential and a
+ * wrong one both surface as "session established" failing, and an unreachable
+ * server surfaces as a `fetch` rejection. Only variable NAMES are ever printed.
  */
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3111';
+
+/** Names of the credentials this script signs in with. Values are never printed. */
+const CREDENTIAL_VARS = ['SEED_ADMIN_EMAIL', 'SEED_ADMIN_PASSWORD'] as const;
+
+/**
+ * Verifies the environment and the target server before the run starts.
+ *
+ * Prints the names of anything missing and exits non-zero. Exits 0 when every
+ * prerequisite is satisfied so the caller can simply gate on it.
+ */
+async function preflight(): Promise<boolean> {
+  const problems: string[] = [];
+
+  const missing = CREDENTIAL_VARS.filter(
+    (name) => (process.env[name] ?? '').trim() === ''
+  );
+  if (missing.length > 0) {
+    problems.push(
+      `missing or empty environment variable(s): ${missing.join(', ')} ` +
+        '(names only — values are never printed)'
+    );
+  }
+
+  let reachable = false;
+  try {
+    await fetch(BASE, { redirect: 'manual' });
+    reachable = true;
+  } catch {
+    reachable = false;
+  }
+  if (!reachable) {
+    problems.push(
+      `no server answering at ${BASE} — start one first ` +
+        '(npm run build && npm run start, or npm run dev)'
+    );
+  }
+
+  if (problems.length === 0) return true;
+
+  console.error('verify-e2e: prerequisites not met.\n');
+  for (const problem of problems) console.error(`  - ${problem}`);
+  console.error(
+    '\nThese are environment and server problems, not product regressions.\n' +
+      'Nothing was requested from the application, so no check below ran.'
+  );
+  return false;
+}
 
 let failures = 0;
 function check(label: string, cond: boolean, detail?: unknown) {
@@ -69,8 +135,9 @@ async function main() {
   const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
   check('csrf token issued', typeof csrfToken === 'string' && csrfToken.length > 0);
 
-  const email = process.env.SEED_ADMIN_EMAIL!;
-  const password = process.env.SEED_ADMIN_PASSWORD!;
+  // Values, read only after preflight() has confirmed both are non-empty.
+  const email = process.env.SEED_ADMIN_EMAIL as string;
+  const password = process.env.SEED_ADMIN_PASSWORD as string;
 
   const loginRes = await fetch(`${BASE}/api/auth/callback/credentials`, {
     method: 'POST',
@@ -143,6 +210,8 @@ async function main() {
   console.log(failures === 0 ? '\nALL CHECKS PASSED' : `\n${failures} CHECK(S) FAILED`);
   process.exit(failures === 0 ? 0 : 1);
 }
+
+if (!(await preflight())) process.exit(1);
 
 main().catch((e) => {
   console.error(e);

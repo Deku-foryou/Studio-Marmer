@@ -11,10 +11,25 @@
  * fields only, so no Cloudinary upload is involved. Every 27-row submission is
  * rejected before any database write, so this creates nothing.
  *
- *   npx tsx test-row-cap-browser.mts
+ *   npm run test:row-cap-browser
+ *
+ * PREREQUISITES (all three, or this script cannot run)
+ *   1. A dev server already listening on BASE_URL (default http://localhost:3000).
+ *   2. Chrome, at CHROME_PATH if set, otherwise the standard Windows install.
+ *   3. `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in the environment.
+ *
+ * The npm command runs `tsx --env-file-if-exists=.env`, so a local `.env`
+ * supplies the credentials without exporting anything by hand. That flag is
+ * `-if-exists` on purpose: a machine with no `.env` — a CI runner fed real
+ * environment variables, say — must still start, and the preflight below then
+ * reports what is missing rather than dying on a file-not-found from Node.
+ *
+ * `preflight()` runs BEFORE Chrome is launched, so a missing prerequisite costs
+ * one console message instead of a headless browser process and a login form
+ * filled with empty strings. Only variable NAMES are ever printed.
  */
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -24,6 +39,54 @@ const CHROME =
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const PORT = 9340;
 const MAX = 26;
+
+/** Names of the credentials this script signs in with. Values are never printed. */
+const CREDENTIAL_VARS = ['SEED_ADMIN_EMAIL', 'SEED_ADMIN_PASSWORD'] as const;
+
+/**
+ * Verifies the environment, the browser and the target server before Chrome
+ * starts. Exits non-zero with the names of anything missing; exits 0 when every
+ * prerequisite is satisfied.
+ */
+async function preflight(): Promise<void> {
+  const problems: string[] = [];
+
+  const missing = CREDENTIAL_VARS.filter(
+    (name) => (process.env[name] ?? '').trim() === ''
+  );
+  if (missing.length > 0) {
+    problems.push(
+      `missing or empty environment variable(s): ${missing.join(', ')} ` +
+        '(names only — values are never printed)'
+    );
+  }
+
+  if (!existsSync(CHROME)) {
+    problems.push(
+      `no browser at ${CHROME} — set CHROME_PATH to a Chrome or Edge executable`
+    );
+  }
+
+  try {
+    await fetch(BASE, { redirect: 'manual' });
+  } catch {
+    problems.push(
+      `no server answering at ${BASE} — start one first (npm run dev)`
+    );
+  }
+
+  if (problems.length === 0) return;
+
+  console.error('test-row-cap-browser: prerequisites not met.\n');
+  for (const problem of problems) console.error(`  - ${problem}`);
+  console.error(
+    '\nThese are environment and tooling problems, not product regressions.\n' +
+      'No browser was launched and nothing was submitted.'
+  );
+  process.exit(1);
+}
+
+await preflight();
 
 let failures = 0;
 function check(label: string, cond: boolean, detail?: unknown) {
@@ -118,6 +181,11 @@ try {
     await sleep(500);
   }
   await sleep(3000); // hydration
+  // Read once, after preflight() has confirmed both are non-empty. These are
+  // interpolated into the expression below, which travels to the page over the
+  // DevTools websocket; they are never written to stdout.
+  const adminEmail = process.env.SEED_ADMIN_EMAIL as string;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD as string;
   await b.eval(`(() => {
     const set = (el, v) => {
       Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set.call(el, v);
@@ -125,8 +193,8 @@ try {
     };
     const i = document.querySelectorAll('input[type="email"], input[type="password"]');
     const f = i[0].closest('form');
-    set(i[0], ${JSON.stringify(process.env.SEED_ADMIN_EMAIL ?? '')});
-    set(i[1], ${JSON.stringify(process.env.SEED_ADMIN_PASSWORD ?? '')});
+    set(i[0], ${JSON.stringify(adminEmail)});
+    set(i[1], ${JSON.stringify(adminPassword)});
     f.requestSubmit();
     return 'ok';
   })()`, sessionId);
