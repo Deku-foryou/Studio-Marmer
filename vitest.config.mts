@@ -11,15 +11,22 @@ import { fileURLToPath } from 'node:url';
  *
  *   - `test-validation.mts`, `test-row-overflow.mts` — pure schema/helper checks
  *     that now live properly in `tests/unit/`. The originals are kept running by
- *     `npm run test:scripts` so no coverage is lost.
- *   - `test-row-limit-action.mts` — replays the FormData row loops. Useful, but
- *     it re-declares the parser rather than importing it, so it cannot catch a
- *     change to the real code. See tests/unit/README.md.
- *   - `test-row-cap-browser.mts` — needs a running dev server, a real Chrome and
- *     a signed-in admin. An integration test, deliberately excluded here.
- *   - `verify-e2e.mts`, `verify-form-reset.mts` — the pre-existing manual
- *     harnesses. `verify-form-source.mts` is also a static source check rather
- *     than a Vitest suite; it has its own command, `npm run verify:forms`.
+ *     `npm run test:scripts` so no coverage is lost. `test-validation.mts` is a
+ *     strict subset of this suite; `test-row-overflow.mts` keeps exactly one
+ *     assertion this suite lacks (a deterministic single-pass proof).
+ *   - `test-row-limit-action.mts` (`npm run test:row-action`) — replays the
+ *     FormData row loops. Useful, but it re-declares the parser rather than
+ *     importing it, so it cannot catch a change to the real code. Wiring it to a
+ *     command does not fix that. See tests/unit/README.md.
+ *   - `test-row-cap-browser.mts` (`npm run test:row-cap-browser`) — needs a
+ *     running dev server, a real Chrome and a signed-in admin. An integration
+ *     test, deliberately excluded here.
+ *   - `verify-form-reset.mts` (`npm run verify:form-reset`) — standalone DOM
+ *     check, no server required. `verify-form-source.mts`
+ *     (`npm run verify:forms`) — static source check. Both are source/DOM checks
+ *     rather than Vitest suites.
+ *   - `verify-e2e.mts` (`npm run verify:e2e`) — needs a running server and
+ *     MySQL. An integration test, deliberately excluded here.
  *
  * ENVIRONMENT
  * `environment: 'node'` and no setup file: every module under test

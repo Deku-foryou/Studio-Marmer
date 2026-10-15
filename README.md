@@ -133,8 +133,12 @@ Models:
 | `npm run start` | Serve the production build |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run the Vitest unit suite |
-| `npm run test:scripts` | Run the root-level schema/overflow cross-check scripts |
-| `npm run verify:forms` | Static source check on the admin forms (no browser or server needed) |
+| `npm run test:scripts` | Root-level schema/overflow cross-check scripts (no prerequisites) |
+| `npm run test:row-action` | Replay the product row-limit action path (no prerequisites) |
+| `npm run verify:form-reset` | React 19 form-reset DOM check (no prerequisites) |
+| `npm run verify:forms` | Static source check on the admin forms (no prerequisites) |
+| `npm run test:row-cap-browser` | Browser check of the row-cap UI — needs a running dev server, Chrome, and a signed-in admin |
+| `npm run verify:e2e` | End-to-end smoke test — needs a running server and MySQL |
 | `npm run measure:home-client` | Report the homepage's client JS (raw + gzip) from the build manifest |
 
 ---

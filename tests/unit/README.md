@@ -13,59 +13,129 @@ Only code that can run **without** a database, a browser, a running server, or
 environment variables. Every module under test imports `zod`, `node:crypto`, or
 another local pure module — nothing reaches MySQL, Cloudinary or `AUTH_SECRET`.
 
+All eight files below are matched by `include: ['tests/unit/**/*.test.ts']` and
+run by `npm test` — 301 tests at the time of writing.
+
 | File | Covers |
 | --- | --- |
 | `product.test.ts` | `createProductSchema`, `updateProductSchema`, required fields, numeric coercion, row limits, `specificationsToJson` |
 | `category.test.ts` | Category create/update, gallery and site-media URL policy, the URL/`publicId` column resolvers |
 | `media-url.test.ts` | `isAllowedMediaUrl`, `hasUnsafeUrlCharacters` |
 | `product-rows.test.ts` | `findRowOverflow`, `overflowFieldErrors`, `MAX_PRODUCT_ROWS` |
+| `credentials.test.ts` | `auth()` credential resolution, the role gate, the rate limiter on the login path |
 | `crypto-and-roles.test.ts` | `hashPassword` / `verifyPassword`, `isAdminRole` |
+| `media-lifecycle.test.ts` | Cloudinary asset lifecycle across product / category / gallery / site media |
+| `rate-limiter.test.ts` | `lib/auth/rate-limiter.ts` windowing and per-IP accounting |
 
 ## What does NOT belong here, and where it lives instead
 
-These are real tests, but they need infrastructure this suite deliberately does
-not have. **None of them are run by `npm test`.**
+These are real checks, but they are not Vitest suites — they are standalone
+`.mts` harnesses at the repository root. **None of them are run by `npm test`.**
 
-| Script | Needs | Status |
-| --- | --- | --- |
-| `test-validation.mts` | nothing | Superseded by the suite above; still runnable via `npm run test:scripts` |
-| `test-row-overflow.mts` | nothing | Same — kept as an independent cross-check of the row-limit rule |
-| `test-row-limit-action.mts` | nothing, but see below | Temporary harness |
-| `test-row-cap-browser.mts` | running dev server + real Chrome + signed-in admin | Integration |
-| `verify-e2e.mts` | running server + MySQL | Integration |
-| `verify-form-reset.mts` | running server | Integration |
-| `verify-form-source.mts` | none | Static source check; run via `npm run verify:forms` |
+The npm script names follow the file names: `test:*` runs a `test-*.mts`,
+`verify:*` runs a `verify-*.mts`.
+
+| Script | Command | External prerequisites | Status |
+| --- | --- | --- | --- |
+| `test-validation.mts` | `npm run test:scripts` | none | Fully superseded by this suite (see below) |
+| `test-row-overflow.mts` | `npm run test:scripts` | none | Mostly superseded, but carries **one assertion Vitest does not have** (see below) |
+| `test-row-limit-action.mts` | `npm run test:row-action` | none | Runs green, but cannot detect production regressions (see below) |
+| `verify-form-reset.mts` | `npm run verify:form-reset` | none | Standalone; needs no server |
+| `verify-form-source.mts` | `npm run verify:forms` | none | Static source check on the admin forms |
+| `test-row-cap-browser.mts` | `npm run test:row-cap-browser` | **running dev server + real Chrome + signed-in admin** | Only coverage of the row-cap UI; keep |
+| `verify-e2e.mts` | `npm run verify:e2e` | **running server + MySQL + seeded admin** | Smoke test; keep |
+
+`test:row-cap-browser` and `verify:e2e` are the only two that cannot run in a bare
+checkout. Both read `BASE_URL` from the environment (defaults `localhost:3000`
+and `127.0.0.1:3111` respectively); the browser harness also reads `CHROME_PATH`
+and defaults to the standard Windows Chrome install.
+
+### `test-validation.mts` is a strict subset of this suite
+
+An assertion-by-assertion comparison puts every one of its checks inside the
+Vitest files above, and most of them inside a *stricter* form:
+
+| `test-validation.mts` | Covered by |
+| --- | --- |
+| Specification bounds 0/1/25/26, `flatten().fieldErrors`, the `Maksimal 26` message | `product.test.ts` — row limits |
+| Image bounds, same message assertion | `product.test.ts` — row limits |
+| Create and update enforcing identical bounds | `product.test.ts` — create and update agree |
+| Flag defaults, blank optionals, omitted `specifications` | `product.test.ts` — optional fields and defaults |
+| The 14 `URL_CASES` through create **and** update category schemas | `category.test.ts` — the same table, both schemas |
+| `isAllowedMediaUrl` over those same cases | `media-url.test.ts`, which also adds `vbscript:`, empty, whitespace-only, schemeless-host, backslash, port, query-string and userinfo cases |
+| Whitespace-padded URL accepted **and** stored trimmed | `category.test.ts` — trims surrounding whitespace |
+| The real seeded Cloudinary URL | `media-url.test.ts` — `hasUnsafeUrlCharacters` |
+
+It is kept only because it costs nothing and is already wired to
+`npm run test:scripts`. It is the strongest REMOVE candidate of the root scripts
+if that cross-check is ever dropped.
+
+### What `test-row-overflow.mts` still contributes
+
+Almost all of it is duplicated by `product-rows.test.ts`, including the
+blank-trailing-row cases, the url-less image slot, unrelated keys, and the
+far-out index. Even the "schema alone would pass the truncated 26" case is
+covered, by `product.test.ts` — *the schema limit alone cannot catch a truncated
+submission*.
+
+**One assertion is unique**, and it is the reason this script is not a duplicate:
+
+```
+--- Bounded work ---
+  PASS  iterates exactly once over the entries
+```
+
+It feeds `findRowOverflow` a counting generator and asserts `seen === 26`, proving
+the iterator is consumed exactly once. `product-rows.test.ts` proves the same
+property only indirectly, with a wall-clock threshold
+(`Date.now()` delta `< 1000`). The counting generator is deterministic; the timing
+check is a heuristic that can pass on a slow machine and fail on a fast one.
+
+> **Do not delete this script on the grounds that it duplicates
+> `product-rows.test.ts`.** If that single assertion is to be kept, move it into
+> `product-rows.test.ts` *first*, then the script can go.
+
+One caveat in the same file, recorded so it is not mistaken for coverage: the
+`update schema is reachable (sanity)` check evaluates
+`parsed.success === false || parsed.success === true`, which is true for any
+input and therefore asserts nothing. It is left in place rather than removed.
 
 ### Known limitation of `test-row-limit-action.mts`
 
 It **re-declares** the `readFormData` row loops rather than importing them,
 because `readFormData` is not exported from `produk/actions.ts` and importing that
-module would pull in Prisma and Auth.js.
+module would pull in Prisma and Auth.js. Its only import is from
+`lib/validation/product-rows`; the parser itself is a hand-copied
+`parseLikeTheAction` function.
 
 The consequence is real and worth stating plainly: **it cannot detect a change to
 the actual parser.** If someone edits the loops in `produk/actions.ts`, this
 script keeps passing. It validates the *shape of the algorithm*, not the shipped
 code.
 
-`findRowOverflow` itself is covered properly in `product-rows.test.ts` against the
-real implementation. Closing this gap properly means extracting the row-reading
-logic out of `produk/actions.ts` into an importable, side-effect-free module so it
-can be tested directly — a refactor for a later phase, not something to fake here.
+Wiring it to npm makes it runnable and stops it looking abandoned, but it does
+**not** close that gap, and the command name should not be read as a claim that
+it does. `findRowOverflow` itself is covered properly in `product-rows.test.ts`
+against the real implementation. Closing the remaining gap means extracting the
+row-reading logic out of `produk/actions.ts` into an importable, side-effect-free
+module so it can be tested directly — a refactor for a later phase, not something
+to fake here.
 
 ## Deliberate scope limits
 
 - **No database, no Prisma.** `lib/data/*` and every server action are out of
-  scope; they open a MySQL connection on import.
+  scope; they open a MySQL connection on import. `media-lifecycle.test.ts` and
+  `credentials.test.ts` reach Prisma and Cloudinary only through injected fakes.
 - **No Auth.js session tests.** `auth.ts` imports Prisma and reads
-  `process.env.AUTH_SECRET` at construction.
-- **No rate-limiter tests.** `lib/auth/rate-limiter.ts` holds module-level
-  mutable state in a `Map` keyed by IP, with a 15-minute window and a
-  `setInterval`. That is testable in isolation, but only with fake timers or by
-  resetting exported state — neither of which exists today. It needs a design
-  decision first, not a test bolted on afterwards.
+  `process.env.AUTH_SECRET` at construction, so the `authorize` callback is not
+  exercised end to end; `credentials.test.ts` covers the credential function it
+  delegates to instead.
 - **No React component tests.** `ProductForm` / `ProductImageUploader` are
   Client Components; testing them needs jsdom or a browser environment. The
   browser harness (`test-row-cap-browser.mts`) covers them for now.
+- **No server-action tests.** Importing a server action pulls in Prisma and
+  Auth.js. This is what forces `test-row-limit-action.mts` to copy the parser by
+  hand — see the limitation noted above.
 
 ## One media-URL policy, enforced everywhere
 
