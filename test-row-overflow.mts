@@ -225,10 +225,55 @@ for (const [label, c] of cases) {
   check(`${label}: create flags specifications === expected`, 'specifications' in errs === shouldErrorSpecs, errs);
   check(`${label}: create flags images === expected`, 'images' in errs === shouldErrorImages, errs);
 
-  // update path uses the identical helper, so identical outcome by construction.
-  const updSchema = updateProductSchema;
-  const parsed = updSchema.safeParse({ name: 'X' });
-  check(`${label}: update schema is reachable (sanity)`, parsed.success === false || parsed.success === true);
+  /*
+   * The update path must apply the identical row ceiling.
+   *
+   * `productBaseShape` and `productRowsShape` are spread into both schemas, so
+   * sharing them is the mechanism; this is the invariant that mechanism exists
+   * to guarantee, asserted against real payloads rather than assumed.
+   *
+   * The payload must be COMPLETE. A fragment like `{ name: 'X' }` fails on ten
+   * missing fields before the row limit is ever reached, so it cannot tell
+   * "the schema rejected this for the right reason" apart from "it rejected it
+   * for an unrelated reason" — which is precisely why the assertion that used
+   * to sit here proved nothing.
+   */
+  const submittedSpecs = c.specs + c.extraSpecs;
+  const submittedImages = c.images + c.extraImages;
+  const overLimit = shouldErrorSpecs || shouldErrorImages;
+
+  const payload = {
+    name: 'Tempat Tisu Marmer',
+    categoryId: '1',
+    shortDescription: 'Deskripsi singkat',
+    description: 'Deskripsi panjang',
+    pricingType: 'FIXED',
+    price: '185000',
+    stoneType: 'Carrara',
+    color: 'Putih',
+    dimensions: '15x12x11',
+    weightGrams: '2400',
+    specifications: Array.from({ length: submittedSpecs }, (_, i) => spec(i)),
+    images: Array.from({ length: submittedImages }, (_, i) => img(i)),
+  };
+
+  const createResult = createProductSchema.safeParse(payload);
+  const updateResult = updateProductSchema.safeParse(payload);
+
+  const detail = updateResult.success
+    ? undefined
+    : updateResult.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(' | ');
+
+  check(
+    `${label}: update schema ${overLimit ? 'REJECTS' : 'accepts'} a ${submittedSpecs}-spec/${submittedImages}-image payload`,
+    updateResult.success === !overLimit,
+    detail
+  );
+  check(
+    `${label}: create and update reach the same verdict`,
+    createResult.success === updateResult.success,
+    { create: createResult.success, update: updateResult.success }
+  );
 }
 
 // ═══ 5. Both overflows at once ═════════════════════════════════════════════
