@@ -100,26 +100,29 @@ One caveat in the same file, recorded so it is not mistaken for coverage: the
 `parsed.success === false || parsed.success === true`, which is true for any
 input and therefore asserts nothing. It is left in place rather than removed.
 
-### Known limitation of `test-row-limit-action.mts`
+### `test-row-limit-action.mts` now tests the real parser
 
-It **re-declares** the `readFormData` row loops rather than importing them,
-because `readFormData` is not exported from `produk/actions.ts` and importing that
-module would pull in Prisma and Auth.js. Its only import is from
-`lib/validation/product-rows`; the parser itself is a hand-copied
-`parseLikeTheAction` function.
+It used to **re-declare** the `readFormData` row loops rather than importing them,
+because `readFormData` was private to `produk/actions.ts` — a `'use server'` module
+that may only export async functions, so it could never be exported, and
+therefore could never be imported by a test either. The parser was a hand-copied
+`parseLikeTheAction`, and the script could not detect a change to the shipped code.
 
-The consequence is real and worth stating plainly: **it cannot detect a change to
-the actual parser.** If someone edits the loops in `produk/actions.ts`, this
-script keeps passing. It validates the *shape of the algorithm*, not the shipped
-code.
+That constraint is gone. `readProductFormData` and `parseProductSubmission` now
+live in `lib/validation/product-form-data.ts`, which imports nothing from Next.js,
+Prisma or Auth.js. `produk/actions.ts` imports `parseProductSubmission` from there
+and the copied loops are gone, so the script exercises the production
+implementation and a regression in the parser fails it.
 
-Wiring it to npm makes it runnable and stops it looking abandoned, but it does
-**not** close that gap, and the command name should not be read as a claim that
-it does. `findRowOverflow` itself is covered properly in `product-rows.test.ts`
-against the real implementation. Closing the remaining gap means extracting the
-row-reading logic out of `produk/actions.ts` into an importable, side-effect-free
-module so it can be tested directly — a refactor for a later phase, not something
-to fake here.
+The three functions moved verbatim: they were compared character-for-character
+against their previous definitions after normalising whitespace and the
+`readFormData` → `readProductFormData` rename, and are identical.
+
+One boundary remains, and it is inherent: the action module itself still cannot be
+imported without pulling in Prisma and Auth.js. The script therefore asserts by
+source inspection that both `createProduct` and `updateProduct` really do route
+through `parseProductSubmission`, that the parser is imported rather than re-declared,
+and that the module still exports nothing but async functions.
 
 ## Deliberate scope limits
 

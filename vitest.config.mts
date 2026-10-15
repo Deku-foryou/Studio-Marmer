@@ -14,10 +14,11 @@ import { fileURLToPath } from 'node:url';
  *     `npm run test:scripts` so no coverage is lost. `test-validation.mts` is a
  *     strict subset of this suite; `test-row-overflow.mts` keeps exactly one
  *     assertion this suite lacks (a deterministic single-pass proof).
- *   - `test-row-limit-action.mts` (`npm run test:row-action`) — replays the
- *     FormData row loops. Useful, but it re-declares the parser rather than
- *     importing it, so it cannot catch a change to the real code. Wiring it to a
- *     command does not fix that. See tests/unit/README.md.
+ *   - `test-row-limit-action.mts` (`npm run test:row-action`) — drives the real
+ *     submission path. The parser lives in `lib/validation/product-form-data.ts`
+ *     so that it could be imported rather than copied; it is not a Vitest suite
+ *     because it also asserts on `produk/actions.ts` source. See
+ *     tests/unit/README.md.
  *   - `test-row-cap-browser.mts` (`npm run test:row-cap-browser`) — needs a
  *     running dev server, a real Chrome and a signed-in admin. An integration
  *     test, deliberately excluded here.
