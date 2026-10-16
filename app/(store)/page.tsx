@@ -48,6 +48,18 @@ interface HomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
+/**
+ * Rendered per request, never prerendered at build.
+ *
+ * The catalog reads `searchParams` (filter / sort / search / page), so the
+ * result set is inherently per-request — and the page plus the store layout
+ * also read `site_settings`, categories and product counts from MySQL on every
+ * visit. A static prerender would query the database from the build worker,
+ * where it is unreachable, and fail the production build
+ * (`PrismaClientInitializationError`, build worker exited with code 1).
+ */
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const query = parseCatalogQuery(params);

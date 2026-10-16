@@ -13,6 +13,17 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Rendered per request, never prerendered at build.
+ *
+ * The grid reads published rows from `gallery_images` on every visit, so the
+ * page always shows what the admin has published. A static prerender would
+ * query MySQL from the build worker, where the database is unreachable
+ * (`PrismaClientInitializationError: Server has closed the connection`) and
+ * fail the production build.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
  * Gallery page — Server Component.
  *
  * Reads the photographs admins publish from the `gallery_images` table through

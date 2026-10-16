@@ -9,6 +9,17 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Rendered per request, never prerendered at build.
+ *
+ * This page's own markup is fully static, but it renders inside the store
+ * layout, whose Navbar/Footer read the `site_settings` row via Prisma. Marking
+ * the route dynamic keeps that read at request runtime: a static prerender
+ * would query MySQL from the build worker, where the database is unreachable,
+ * and fail the production build — the same failure seen on `/galeri`.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
  * Practical facts, deliberately NOT the same four points as the homepage's
  * about strip. Repeating those verbatim on a second page made the same
  * sentence appear twice in one short visit.

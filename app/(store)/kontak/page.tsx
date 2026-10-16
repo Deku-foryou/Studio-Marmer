@@ -13,6 +13,16 @@ export const metadata: Metadata = {
 };
 
 /**
+ * Rendered per request, never prerendered at build.
+ *
+ * The channel list comes from the `site_settings` row, which the admin edits
+ * at runtime. A static prerender would query MySQL from the build worker,
+ * where the database is unreachable, and fail the production build — the same
+ * failure seen on `/galeri`.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
  * Contact page — Server Component.
  *
  * Only channels actually configured in `site_settings` are rendered, so the
