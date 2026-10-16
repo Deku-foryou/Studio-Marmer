@@ -32,6 +32,15 @@ export const metadata: Metadata = {
     'Studio Marmer',
   ],
   applicationName: 'Studio Marmer',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48', type: 'image/x-icon' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+      { url: '/images/sm-icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/images/sm-icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     title: 'Studio Marmer — Kerajinan Marmer',
     description:
