@@ -210,7 +210,7 @@ export default function AdminSidebar({ userName, userRole }: AdminSidebarProps) 
       <aside
         id="admin-sidebar-drawer"
         aria-label="Navigasi admin"
-        aria-hidden={!isOpen}
+        aria-hidden={!isOpen} inert={!isOpen}
         className={cn(
           'lg:hidden fixed inset-y-0 left-0 z-50 w-64 max-w-[85vw] flex-col',
           'bg-[#171717] border-r border-[#2E2E2E]',

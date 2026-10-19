@@ -246,7 +246,7 @@ export async function updateGalleryItem(
         description: data.description ?? null,
         ...toGalleryImageColumns(data),
         altText: data.altText ?? null,
-        sortOrder: data.sortOrder ?? 0,
+        sortOrder: data.sortOrder ?? existing.sortOrder,
         isActive: data.isActive,
       },
       select: { id: true, title: true },
