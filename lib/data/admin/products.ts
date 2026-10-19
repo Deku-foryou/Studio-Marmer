@@ -19,6 +19,7 @@ if (typeof window !== 'undefined') {
 
 import { prisma } from '@/lib/db/prisma';
 import { slugify } from '@/lib/slug';
+import { normalizeSpecifications } from '@/lib/specifications';
 
 const PAGE_SIZE = 20;
 
@@ -41,19 +42,34 @@ function optionalDecimalToNumber(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-/** Normalizes the loosely-typed `specifications` JSON column. */
-function readSpecifications(value: unknown): { label: string; value: string }[] {
-  if (!Array.isArray(value)) return [];
-  const out: { label: string; value: string }[] = [];
-  for (const entry of value) {
-    if (entry && typeof entry === 'object') {
-      const record = entry as Record<string, unknown>;
-      if (typeof record.label === 'string' && typeof record.value === 'string') {
-        out.push({ label: record.label, value: record.value });
-      }
-    }
-  }
-  return out;
+/**
+ * Normalizes the loosely-typed `specifications` JSON column for the edit form.
+ *
+ * Delegates to the shared helper rather than repeating the parser. It used to
+ * accept only string values while the storefront also accepted numbers, so a
+ * numeric row was invisible here and then deleted by `updateProduct`, which
+ * rewrites the whole column from the form rows.
+ *
+ * Exported so that load → save round trip is testable without a database.
+ */
+export function readSpecifications(value: unknown): {
+  label: string;
+  value: string;
+}[] {
+  return normalizeSpecifications(value).rows;
+}
+
+/**
+ * Same normalization, but also reporting the rows the form cannot show.
+ *
+ * `updateProduct` uses this to carry those rows through a save instead of
+ * dropping them.
+ */
+export function readSpecificationsPreserving(value: unknown): {
+  rows: { label: string; value: string }[];
+  skipped: unknown[];
+} {
+  return normalizeSpecifications(value);
 }
 
 // ─── Shapes ───────────────────────────────────────────────────────────────────
@@ -104,6 +120,13 @@ export type AdminProductDetail = Omit<
     altText: string | null;
     publicId: string | null;
   }[];
+  /**
+   * Stored specification rows the edit form cannot represent, kept so a save
+   * can carry them through instead of deleting them. Empty for normal data.
+   *
+   * Only the edit form needs this; the list view does not.
+   */
+  unrepresentableSpecifications: unknown[];
 };
 
 export type AdminCategoryRow = {
@@ -293,6 +316,8 @@ function toAdminProductDetail(record: ProductRecord): AdminProductDetail {
     dimensions: record.dimensions,
     weightGrams: record.weightGrams,
     specifications: readSpecifications(record.specifications),
+    unrepresentableSpecifications:
+      readSpecificationsPreserving(record.specifications).skipped,
     craftingTime: record.craftingTime,
     isAvailable: record.isAvailable,
     isUniquePiece: record.isUniquePiece,

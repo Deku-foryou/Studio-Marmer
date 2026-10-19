@@ -35,6 +35,7 @@ import {
   normalizeSearchTerm,
 } from '@/lib/product-suggestions';
 import type { SitemapProduct } from '@/lib/seo';
+import { normalizeSpecifications as normalizeSpecificationRows } from '@/lib/specifications';
 import type {
   CatalogCategory,
   CatalogPage,
@@ -148,28 +149,13 @@ function primaryImage(row: ProductRow): {
 
 /**
  * Normalizes the `specifications` JSON column into display-ready pairs.
- * The column is loosely typed in the database, so unknown shapes are ignored
- * rather than trusted.
+ *
+ * Delegates to the shared helper so this renderer and the admin edit form can
+ * never disagree about what a stored row means — they used to, and the mismatch
+ * destroyed numeric rows on every product save. See `lib/specifications.ts`.
  */
 function normalizeSpecifications(value: unknown): ProductSpecification[] {
-  if (!Array.isArray(value)) return [];
-
-  const out: ProductSpecification[] = [];
-  for (const entry of value) {
-    if (entry && typeof entry === 'object') {
-      const record = entry as Record<string, unknown>;
-      const label = typeof record.label === 'string' ? record.label : null;
-      const rawValue = record.value;
-      const displayValue =
-        typeof rawValue === 'string' || typeof rawValue === 'number'
-          ? String(rawValue)
-          : null;
-      if (label && displayValue) {
-        out.push({ label, value: displayValue });
-      }
-    }
-  }
-  return out;
+  return normalizeSpecificationRows(value).rows;
 }
 
 // ─── Shared query shape ───────────────────────────────────────────────────────

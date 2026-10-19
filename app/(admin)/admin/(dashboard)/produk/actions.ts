@@ -18,6 +18,7 @@ import {
   updateProductSchema,
 } from '@/lib/validation/product';
 import { parseProductSubmission } from '@/lib/validation/product-form-data';
+import { mergeSkippedSpecifications } from '@/lib/specifications';
 import { cleanupUnreferencedAssets } from '@/lib/media-lifecycle';
 import type { ProductFormState } from '@/lib/validation/product-action-state';
 import { buildFlashHref } from '@/lib/admin/toast';
@@ -207,9 +208,13 @@ export async function updateProduct(
    * the reason given in createProduct: an action that throws is torn down into an
    * error boundary, taking every field the admin filled in with it. A fixed error
    * state keeps the form and its values on screen.
+   *
+   * `existing` is declared outside so the specification rows it carries can be
+   * reused when the column is rewritten below.
    */
+  let existing: Awaited<ReturnType<typeof getAdminProductById>>;
   try {
-    const existing = await getAdminProductById(productId);
+    existing = await getAdminProductById(productId);
     if (!existing) {
       return {
         status: 'error',
@@ -234,7 +239,16 @@ export async function updateProduct(
   }
 
   const input = parsed.data;
-  const specifications = specificationsToJson(input.specifications);
+  /*
+   * Rows the form could not show are carried through rather than dropped.
+   * This rewrite replaces the whole column, so without this a save that had
+   * nothing to do with specifications would still delete any stored row the
+   * form could not represent.
+   */
+  const specifications = mergeSkippedSpecifications(
+    specificationsToJson(input.specifications),
+    existing.unrepresentableSpecifications
+  );
 
   try {
     if (!(await categoryExists(input.categoryId))) {
