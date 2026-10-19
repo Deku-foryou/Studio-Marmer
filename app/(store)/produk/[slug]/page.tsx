@@ -38,6 +38,14 @@ export async function generateMetadata({
       description: product.shortDescription,
       type: 'website',
       locale: 'id_ID',
+      /*
+       * The absolute URL of this exact product. Without it a share preview can
+       * resolve the link against whatever the scraper treats as the base, and
+       * two products shared from different entry points can be reported as the
+       * same URL. It mirrors `alternates.canonical`, so the page has exactly one
+       * identity — the same string, resolved through the same `metadataBase`.
+       */
+      url: `/produk/${product.slug}`,
       images: product.imageUrl
         ? [{ url: product.imageUrl, alt: product.imageAlt }]
         : undefined,

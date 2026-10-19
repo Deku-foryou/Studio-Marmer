@@ -516,7 +516,7 @@ export default function NavbarSearch({ variant }: NavbarSearchProps) {
           {/* Hint row: makes the Enter behaviour discoverable. */}
           {status === 'idle' && suggestions.length > 0 && (
             <p className="border-t border-[#E5E1DA] px-4 py-2 text-[10px] uppercase tracking-[0.14em] text-[#999999]">
-              Enter untuk semua hasil &middot; Esc untuk tutup
+              Enter untuk semua hasil &middot; X untuk tutup
             </p>
           )}
         </div>

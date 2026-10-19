@@ -1,3 +1,5 @@
+import type { Metadata } from 'next';
+
 import HeroSection from '@/components/layout/HeroSection';
 import CategoriesSection from '@/components/sections/CategoriesSection';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
@@ -9,7 +11,32 @@ import {
   getProductCountsByCategory,
 } from '@/lib/data/products';
 import { getSiteSettings } from '@/lib/data/site';
+import { BRAND } from '@/lib/brand';
 import { PRODUCTS_PER_PAGE, parseCatalogQuery } from '@/lib/catalog-query';
+
+/**
+ * Homepage metadata.
+ *
+ * Previously the homepage inherited the root layout's defaults, which meant it
+ * had NO canonical tag at all — the only public page without one. That matters
+ * because this route is also the target of every catalog filter permutation:
+ * `/?kategori=vas`, `/?sort=price-asc` and `/?page=2` all render this same page.
+ * Without a canonical telling Google they belong to `/`, those permutations are
+ * eligible to be indexed as duplicates of the homepage.
+ *
+ * Every path in the copy below is a product type the storefront already
+ * publishes or states in its own body copy; nothing here is a claim the database
+ * does not support.
+ */
+export const metadata: Metadata = {
+  title: `${BRAND.name} — Katalog Kerajinan Marmer`,
+  description:
+    'Katalog kerajinan marmer Studio Marmer: tempat tisu, tempat sabun, holder, nampan, coaster, dan vas kecil. Lihat detail produk dan hubungi melalui WhatsApp atau Shopee.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    url: '/',
+  },
+};
 
 /**
  * Homepage — Server Component.

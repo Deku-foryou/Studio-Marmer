@@ -34,6 +34,7 @@ import {
   SEARCH_SUGGESTION_LIMIT,
   normalizeSearchTerm,
 } from '@/lib/product-suggestions';
+import type { SitemapProduct } from '@/lib/seo';
 import type {
   CatalogCategory,
   CatalogPage,
@@ -437,6 +438,26 @@ export async function searchProductSuggestions(
     price: toNumber(row.price),
     imageUrl: row.images[0]?.imageUrl ?? '',
   }));
+}
+
+/**
+ * Every product the storefront is allowed to list, as sitemap rows.
+ *
+ * Only two columns are selected because that is all `app/sitemap.ts` renders,
+ * and `isAvailable: true` is the same gate `getCatalogProducts` uses — a
+ * sold-out piece is never advertised to a crawler, because the grid that links
+ * to it does not render it either.
+ *
+ * Not paginated, unlike the grid query: a sitemap must be complete or it is
+ * worse than useless, and this selects two scalar columns per row rather than
+ * the full catalog with images and JSON specifications.
+ */
+export async function getSitemapProducts(): Promise<SitemapProduct[]> {
+  return prisma.product.findMany({
+    where: { isAvailable: true },
+    select: { slug: true, updatedAt: true },
+    orderBy: { slug: 'asc' },
+  });
 }
 
 /**
