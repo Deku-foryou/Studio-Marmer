@@ -30,6 +30,10 @@ if (typeof window !== 'undefined') {
 
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
+import {
+  SEARCH_SUGGESTION_LIMIT,
+  normalizeSearchTerm,
+} from '@/lib/product-suggestions';
 import type {
   CatalogCategory,
   CatalogPage,
@@ -37,6 +41,7 @@ import type {
   PricingType,
   ProductDetail,
   ProductSpecification,
+  ProductSuggestion,
   SortOption,
   StockStatus,
 } from '@/types/product';
@@ -197,6 +202,26 @@ const PRODUCT_SELECT = {
   },
 } as const;
 
+/**
+ * Projection for autocomplete suggestions.
+ *
+ * Deliberately narrower than `PRODUCT_SELECT`: a dropdown row renders a
+ * thumbnail, a title, a category and a price, so `description`, `specifications`
+ * and the full image list are not selected. `take: 1` on the relation fetches
+ * only the primary photo instead of the whole gallery.
+ */
+const PRODUCT_SUGGESTION_SELECT = {
+  slug: true,
+  name: true,
+  price: true,
+  category: { select: { name: true } },
+  images: {
+    select: { imageUrl: true },
+    orderBy: { sortOrder: 'asc' },
+    take: 1,
+  },
+} as const;
+
 // ─── Row -> DTO mappers ───────────────────────────────────────────────────────
 
 function toCatalogProduct(row: ProductRow): CatalogProduct {
@@ -283,7 +308,7 @@ function buildCatalogWhere(input: CatalogQueryInput): Prisma.ProductWhereInput {
     conditions.push({ isAvailable: true });
   }
 
-  const search = input.search.trim();
+  const search = normalizeSearchTerm(input.search);
   if (search) {
     // MySQL's default collation is case-insensitive, so `contains` reproduces
     // the old `toLowerCase().includes()` behaviour without a function index.
@@ -363,6 +388,55 @@ export async function getCatalogProducts(
     currentPage,
     pageSize,
   };
+}
+
+/**
+ * Autocomplete suggestions for the navbar search.
+ *
+ * Reuses `buildCatalogWhere` rather than writing a second `where` clause: a
+ * suggestion and a catalog result for the same term must agree, and the only
+ * way to guarantee that is for both to run the same predicate. In particular
+ * this means suggestions come from real rows in `products` - there is no
+ * hardcoded or sample list anywhere in the autocomplete - and only from
+ * purchasable products, matching what the storefront is allowed to list.
+ *
+ * Ordered alphabetically so a term like "lu" deterministically offers Luna and
+ * Lurian, with `id` as a final tiebreaker so two identically named products
+ * cannot swap places between requests.
+ */
+export async function searchProductSuggestions(
+  rawSearch: string,
+  limit: number = SEARCH_SUGGESTION_LIMIT
+): Promise<ProductSuggestion[]> {
+  const search = normalizeSearchTerm(rawSearch);
+  if (!search) return [];
+
+  const take = Math.min(
+    Math.max(1, Math.floor(limit)),
+    SEARCH_SUGGESTION_LIMIT
+  );
+
+  const rows = await prisma.product.findMany({
+    where: buildCatalogWhere({
+      page: 1,
+      pageSize: take,
+      search,
+      categories: [],
+      inStockOnly: false,
+      sort: 'featured',
+    }),
+    orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    take,
+    select: PRODUCT_SUGGESTION_SELECT,
+  });
+
+  return rows.map((row) => ({
+    slug: row.slug,
+    title: row.name,
+    category: row.category.name,
+    price: toNumber(row.price),
+    imageUrl: row.images[0]?.imageUrl ?? '',
+  }));
 }
 
 /**

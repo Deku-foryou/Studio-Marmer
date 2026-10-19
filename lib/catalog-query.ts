@@ -18,8 +18,16 @@ import type { SortOption } from '@/types/product';
  *  grid column count is responsive, never the number of items. */
 export const PRODUCTS_PER_PAGE = 8;
 
-/** Anchor id of the catalog section, used to scroll back to the grid. */
-const CATALOG_ANCHOR = 'katalog';
+/**
+ * Anchor id of the catalog section, used to scroll back to the grid.
+ *
+ * Exported because the navbar needs it for a second job that `buildCatalogHref`
+ * cannot do: after pressing Enter the router has already changed the URL, but a
+ * client-side navigation from `/` to `/?q=…` does not always move the viewport,
+ * so the search box scrolls to the anchor itself. Sharing the constant keeps the
+ * scroll target and the href anchor from drifting apart.
+ */
+export const CATALOG_ANCHOR = 'katalog';
 
 /**
  * Query parameter names. `kategori` and `sort` match the vocabulary already used

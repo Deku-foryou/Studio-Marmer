@@ -81,6 +81,25 @@ export interface CatalogPage {
   pageSize: number;
 }
 
+/**
+ * One autocomplete suggestion in the navbar search dropdown.
+ *
+ * A deliberately narrow projection of `CatalogProduct`: a dropdown row renders a
+ * thumbnail, a title, a category and a price, so nothing else is fetched. It is
+ * not a second product model - `slug`, `title` and `price` mean exactly what
+ * they mean on `CatalogProduct`.
+ */
+export interface ProductSuggestion {
+  /** Public URL segment; the dropdown navigates to `/produk/[slug]`. */
+  slug: string;
+  title: string;
+  category: string;
+  /** Number, never a Prisma Decimal. */
+  price: number;
+  /** Empty string when the product has no photo yet. */
+  imageUrl: string;
+}
+
 /** Extra marble detail rendered on the product detail page (server-side). */
 export interface ProductDetail extends CatalogProduct {
   material: string | null;
