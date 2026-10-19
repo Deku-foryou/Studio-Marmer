@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import { siteOrigin } from '@/lib/site-url';
 import './globals.css';
 
 const inter = Inter({
@@ -15,7 +16,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL(siteOrigin()),
   title: {
     default: 'Studio Marmer — Kerajinan Marmer',
     template: '%s',
