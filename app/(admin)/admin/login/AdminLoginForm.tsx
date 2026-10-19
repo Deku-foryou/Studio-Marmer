@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { safeCallbackPath } from '@/lib/auth/callback-url';
 
 /**
  * Admin sign-in form — Client Component.
@@ -16,6 +17,11 @@ import { Loader2, AlertCircle } from 'lucide-react';
  *    component never inspects which credential was wrong.
  *  - `password` is held only in local component state for the duration of the
  *    submit and is never written to storage or logged.
+ *  - `callbackUrl` is attacker-controllable, so it is passed through
+ *    `safeCallbackPath` before it can become a navigation. Because the sign-in
+ *    uses `redirect: false`, this component — not Auth.js — performs the
+ *    redirect, which means this validation is the only thing standing between a
+ *    successful login and an external site.
  */
 
 const GENERIC_ERROR = 'Email atau password salah.';
@@ -23,7 +29,7 @@ const GENERIC_ERROR = 'Email atau password salah.';
 export default function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') ?? '/admin';
+  const callbackUrl = safeCallbackPath(searchParams.get('callbackUrl'));
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
