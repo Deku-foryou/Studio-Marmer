@@ -35,6 +35,7 @@ type OptionalSettingField =
   | 'shopeeUrl'
   | 'instagramUrl'
   | 'tiktokUrl'
+  | 'tokopediaUrl'
   | 'email'
   | 'address'
   | 'heroTitle'
@@ -58,6 +59,7 @@ export interface AdminSiteSettings extends Omit<SiteSettingsInput, OptionalSetti
   shopeeUrl: string | null;
   instagramUrl: string | null;
   tiktokUrl: string | null;
+  tokopediaUrl: string | null;
   email: string | null;
   address: string | null;
   heroTitle: string | null;
@@ -77,6 +79,7 @@ const SETTINGS_SELECT = {
   shopeeUrl: true,
   instagramUrl: true,
   tiktokUrl: true,
+  tokopediaUrl: true,
   email: true,
   address: true,
   heroTitle: true,

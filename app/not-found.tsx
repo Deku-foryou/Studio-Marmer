@@ -13,6 +13,7 @@ function getDefaultSiteSettings(): SiteSettingsDTO {
     shopeeUrl: null,
     instagramUrl: null,
     tiktokUrl: null,
+    tokopediaUrl: null,
     email: null,
     address: null,
     heroTitle: null,

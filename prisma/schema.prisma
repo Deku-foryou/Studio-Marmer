@@ -179,6 +179,7 @@ model SiteSettings {
   shopeeUrl      String?  @db.VarChar(500)
   instagramUrl   String?  @db.VarChar(500)
   tiktokUrl      String?  @db.VarChar(500)
+  tokopediaUrl   String?  @db.VarChar(500)
   email          String?  @db.VarChar(255)
   address        String?  @db.VarChar(255)
   heroTitle      String?  @db.VarChar(200)

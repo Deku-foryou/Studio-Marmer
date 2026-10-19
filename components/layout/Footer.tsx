@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MessageCircle, ShoppingBag, Camera, Music2, Mail, MapPin } from 'lucide-react';
+import { MessageCircle, ShoppingBag, Camera, Music2, Mail, MapPin, Store } from 'lucide-react';
 import { buildWhatsAppLink } from '@/lib/utils';
 import { BRAND } from '@/lib/brand';
 import SiteLogo from './SiteLogo';
@@ -49,8 +49,8 @@ export default function Footer({ settings }: FooterProps) {
 
   return (
     <footer className="bg-[#171717] border-t border-[#2E2E2E] mt-16 sm:mt-24">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-14 sm:py-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-14">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 py-12 sm:py-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-10 lg:gap-14">
           {/* ─── Brand ────────────────────────────────────────────── */}
           {/* An uploaded logo replaces the wordmark. The footer inverts to
               charcoal, so the logo needs a light plate behind it to stay legible
@@ -150,6 +150,19 @@ export default function Footer({ settings }: FooterProps) {
                   >
                     <ShoppingBag size={13} strokeWidth={1.5} />
                     Shopee
+                  </a>
+                </li>
+              )}
+              {settings.tokopediaUrl && (
+                <li>
+                  <a
+                    href={settings.tokopediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[12px] text-[#A3A09B] hover:text-[#FFFFFF] transition-colors duration-300"
+                  >
+                    <Store size={13} strokeWidth={1.5} />
+                    Tokopedia
                   </a>
                 </li>
               )}

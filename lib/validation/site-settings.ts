@@ -155,6 +155,7 @@ export const siteSettingsSchema = z.object({
   shopeeUrl: optionalExternalUrl('Shopee'),
   instagramUrl: optionalExternalUrl('Instagram'),
   tiktokUrl: optionalExternalUrl('TikTok'),
+  tokopediaUrl: optionalExternalUrl('Tokopedia'),
 
   heroTitle: optionalText(200, 'Judul hero maksimal 200 karakter.'),
   heroSubtitle: optionalText(500, 'Subtitle hero maksimal 500 karakter.'),

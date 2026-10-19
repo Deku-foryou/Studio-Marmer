@@ -14,6 +14,7 @@ export interface SiteSettingsDTO {
   shopeeUrl: string | null;
   instagramUrl: string | null;
   tiktokUrl: string | null;
+  tokopediaUrl: string | null;
   email: string | null;
   address: string | null;
   heroTitle: string | null;

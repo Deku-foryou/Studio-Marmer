@@ -56,6 +56,7 @@ interface SiteSettingsFormValues {
   shopeeUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
+  tokopediaUrl: string;
   heroTitle: string;
   heroSubtitle: string;
 }
@@ -214,6 +215,7 @@ export function SiteSettingsForm({ settings }: SiteSettingsFormProps) {
     shopeeUrl: settings.shopeeUrl ?? '',
     instagramUrl: settings.instagramUrl ?? '',
     tiktokUrl: settings.tiktokUrl ?? '',
+    tokopediaUrl: settings.tokopediaUrl ?? '',
     heroTitle: settings.heroTitle ?? '',
     heroSubtitle: settings.heroSubtitle ?? '',
   }));
@@ -456,6 +458,24 @@ maxLength={500}
               aria-invalid={Boolean(fieldErrors.tiktokUrl)}
             />
             <FieldError message={fieldErrors.tiktokUrl} />
+          </div>
+
+          <div>
+            <label htmlFor="tokopediaUrl" className={LABEL_CLASS}>
+              Tokopedia
+            </label>
+            <input
+              id="tokopediaUrl"
+              name="tokopediaUrl"
+              type="url"
+maxLength={500}
+                value={values.tokopediaUrl}
+                onChange={(e) => setValue('tokopediaUrl', e.target.value)}
+                placeholder="https://tokopedia.com/�?�"
+              className={FIELD_CLASS}
+              aria-invalid={Boolean(fieldErrors.tokopediaUrl)}
+            />
+            <FieldError message={fieldErrors.tokopediaUrl} />
           </div>
         </div>
 

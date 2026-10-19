@@ -90,6 +90,7 @@ function readFormData(formData: FormData) {
     shopeeUrl: getString('shopeeUrl'),
     instagramUrl: getString('instagramUrl'),
     tiktokUrl: getString('tiktokUrl'),
+    tokopediaUrl: getString('tokopediaUrl'),
     heroTitle: getString('heroTitle'),
     heroSubtitle: getString('heroSubtitle'),
     heroImageUrl: getString('heroImageUrl'),
