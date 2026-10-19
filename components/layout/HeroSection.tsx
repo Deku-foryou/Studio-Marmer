@@ -362,7 +362,7 @@ export default function HeroSection({ settings }: HeroSectionProps) {
                 <>
                   Keindahan batu alam,
                   <br />
-                  <span className="font-medium">Dibentuk dengan Ketelitian.</span>
+                  <span className="font-medium">dibentuk dengan ketelitian.</span>
                 </>
               )}
             </h1>

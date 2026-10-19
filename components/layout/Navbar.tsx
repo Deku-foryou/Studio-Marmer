@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import NavbarSearch, { NavbarSearchSkeleton } from './NavbarSearch';
 import SiteLogo from './SiteLogo';
-import { Search, X, Menu, MessageCircle } from 'lucide-react';
+import { Search, X, Menu, MessageCircle, ShoppingBag } from 'lucide-react';
 import { cn, normalizeWhatsAppNumber } from '@/lib/utils';
 import { BRAND, NAV_LINKS } from '@/lib/brand';
 import type { SiteSettingsDTO } from '@/types/site';
@@ -168,6 +168,32 @@ export default function Navbar({ settings }: NavbarProps) {
               </a>
             )}
 
+            {/* Shopee CTA */}
+            {/*
+             * The store-wide Shopee link, straight from `SiteSettings.shopeeUrl`
+             * — the same field the product page falls back to
+             * (`fallbackShopeeUrl`) and the Footer renders. There is deliberately
+             * no hardcoded store URL here: when the admin has not configured one
+             * the button is simply absent, exactly as in the Footer, rather than
+             * sending visitors to a guessed address.
+             *
+             * Outlined rather than filled so it reads as the secondary action next
+             * to the solid WhatsApp button, whose appearance is unchanged.
+             * `hidden sm:inline-flex` matches the WhatsApp CTA, so both appear
+             * together and the bar never gets wider below the `sm` breakpoint.
+             */}
+            {settings.shopeeUrl && (
+              <a
+                href={settings.shopeeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hidden sm:inline-flex items-center gap-2 border border-[#1A1A1A] px-4 py-2.5 text-[10px] uppercase tracking-[0.16em] font-medium text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white transition-colors duration-300"
+              >
+                <ShoppingBag size={13} strokeWidth={1.5} />
+                Shopee
+              </a>
+            )}
+
             {/* Mobile menu toggle */}
             <button
               onClick={() => setIsMenuOpen((v) => !v)}
@@ -215,16 +241,48 @@ export default function Navbar({ settings }: NavbarProps) {
               ))}
             </ul>
 
-            {whatsappHref && (
-              <a
-                href={whatsappHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-8 w-full inline-flex items-center justify-center gap-2 bg-[#1A1A1A] text-white px-6 py-4 text-[11px] uppercase tracking-[0.16em] font-medium"
+            {/*
+             * Both purchase channels, in one grid so the overlay gains no extra
+             * height. They stay equal-width and never wrap, which keeps the
+             * labels readable on a 320px screen instead of squeezing a third
+             * item onto a cramped row.
+             *
+             * `settings.shopeeUrl &&` matches the desktop CTA: an unconfigured
+             * store simply leaves WhatsApp full-width rather than showing an
+             * empty half.
+             */}
+            {(whatsappHref || settings.shopeeUrl) && (
+              <div
+                className={`mt-8 grid gap-3 ${
+                  whatsappHref && settings.shopeeUrl
+                    ? 'grid-cols-2'
+                    : 'grid-cols-1'
+                }`}
               >
-                <MessageCircle size={14} strokeWidth={1.5} />
-                Pesan via WhatsApp
-              </a>
+                {whatsappHref && (
+                  <a
+                    href={whatsappHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 bg-[#1A1A1A] text-white px-6 py-4 text-[11px] uppercase tracking-[0.16em] font-medium"
+                  >
+                    <MessageCircle size={14} strokeWidth={1.5} />
+                    Pesan via WhatsApp
+                  </a>
+                )}
+
+                {settings.shopeeUrl && (
+                  <a
+                    href={settings.shopeeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 border border-[#1A1A1A] text-[#1A1A1A] px-6 py-4 text-[11px] uppercase tracking-[0.16em] font-medium hover:bg-[#1A1A1A] hover:text-white transition-colors duration-300"
+                  >
+                    <ShoppingBag size={14} strokeWidth={1.5} />
+                    Beli di Shopee
+                  </a>
+                )}
+              </div>
             )}
           </nav>
         </div>
