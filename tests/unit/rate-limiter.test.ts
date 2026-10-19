@@ -198,17 +198,19 @@ describe('counter isolation', () => {
     expect(checkRateLimit(request, 'ADMIN@STUDIO-MARMER.TEST').allowed).toBe(false);
   });
 
-  it('takes the first entry from a proxy chain', async () => {
+  it('takes the last entry from a proxy chain', async () => {
     const { checkRateLimit, recordFailedAttempt } = await loadLimiter({ maxAttempts: '1' });
     const chained = requestFrom('9.9.9.9', { 'x-forwarded-for': '9.9.9.9, 8.8.8.8, 7.7.7.7' });
 
     recordFailedAttempt(chained, 'a@u.test');
     recordFailedAttempt(chained, 'a@u.test');
 
-    // The counter is keyed on 9.9.9.9, so a request claiming only that leading
-    // entry is blocked, while one claiming a later hop is a different identity.
-    expect(checkRateLimit(requestFrom('9.9.9.9'), 'a@u.test').allowed).toBe(false);
+    // The rightmost entry in XFF is what we record by. The chained XFF
+    // 9.9.9.9,8.8.8.8,7.7.7.7 has rightmost = 7.7.7.7, so only a request
+    // claiming that same identity is blocked.
+    expect(checkRateLimit(requestFrom('7.7.7.7'), 'a@u.test').allowed).toBe(false);
     expect(checkRateLimit(requestFrom('8.8.8.8'), 'a@u.test').allowed).toBe(true);
+    expect(checkRateLimit(requestFrom('9.9.9.9'), 'a@u.test').allowed).toBe(true);
   });
 });
 
