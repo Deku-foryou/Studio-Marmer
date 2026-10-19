@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db/prisma';
 import {
   getAdminGalleryItemById,
   moveGalleryItemBy,
+  nextGallerySortOrder,
 } from '@/lib/data/admin/gallery';
 import {
   createGalleryItemSchema,
@@ -143,7 +144,12 @@ export async function createGalleryItem(
         description: data.description ?? null,
         ...toGalleryImageColumns(data),
         altText: data.altText ?? null,
-        sortOrder: data.sortOrder ?? 0,
+        /*
+         * Append after the current last photo when the admin did not choose a
+         * position. The old fallback of `0` put every new photo in the same
+         * bucket, leaving the storefront's `id` tiebreaker to invent an order.
+         */
+        sortOrder: data.sortOrder ?? (await nextGallerySortOrder()),
         isActive: data.isActive,
       },
       select: { id: true, title: true },

@@ -111,25 +111,91 @@ export type MoveGalleryItemOutcome =
   | { status: 'not-found' };
 
 /**
+ * Result of the pure reordering step, before anything is written.
+ *
+ * `moved` carries the full new sequence, because the caller renumbers every
+ * row from it. `edge` and `not-found` carry nothing: nothing was changed.
+ */
+export type ApplyGalleryMoveResult =
+  | { status: 'moved'; orderedIds: number[] }
+  | { status: 'edge' }
+  | { status: 'not-found' };
+
+/**
+ * The position a newly created photo should take when the admin did not pick
+ * one explicitly.
+ *
+ * Rows used to default to `0`, which meant every new photo landed in the same
+ * bucket and the storefront's `id` tiebreaker decided the real order. Appending
+ * after the current maximum puts a new photo at the end of the gallery, where
+ * "added last" is the honest expectation.
+ *
+ * Exported so the rule is testable without a database.
+ */
+export async function nextGallerySortOrder(): Promise<number> {
+  const last = await prisma.galleryImage.findFirst({
+    orderBy: [{ sortOrder: 'desc' }, { id: 'desc' }],
+    select: { sortOrder: true },
+  });
+
+  return (last?.sortOrder ?? -1) + 1;
+}
+
+/**
+ * Computes the new order after moving one item one place up or down.
+ *
+ * `orderedIds` must already be in the sequence the storefront renders
+ * (`sortOrder asc`, then `id asc` as the tiebreaker) — the caller reads it that
+ * way. The function only swaps two entries and touches nothing else.
+ *
+ * WHY THE POSITION IS SWAPPED AND NOT DERIVED FROM `sortOrder`
+ * `sortOrder` is a display position, and it is not unique. Photos created
+ * without an explicit position all share the same value, and the storefront
+ * breaks the tie on `id`. Adjusting a single value by ±1 therefore does not do
+ * what it looks like: with three photos at `sortOrder = 0`, moving the middle
+ * one up bumped its neighbour to `1` and the result was `2, 3, 1` — the photo
+ * that was never touched jumped ahead of the one that was moved. Swapping two
+ * entries of the already-ordered list cannot depend on the stored values at all.
+ *
+ * Pure and exported so this ordering rule is testable without a database.
+ */
+export function applyGalleryMove(
+  orderedIds: readonly number[],
+  id: number,
+  direction: -1 | 1
+): ApplyGalleryMoveResult {
+  const index = orderedIds.indexOf(id);
+  if (index === -1) return { status: 'not-found' };
+
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= orderedIds.length) {
+    return { status: 'edge' };
+  }
+
+  const next = [...orderedIds];
+  const [moved] = next.splice(index, 1);
+  next.splice(targetIndex, 0, moved);
+
+  return { status: 'moved', orderedIds: next };
+}
+
+/**
  * Moves one photo one place up or down in the gallery order.
  *
- * WHY A SWAP RATHER THAN ±1
- * `sortOrder` is a display position, not a weight the storefront computes with, and
- * it is not unique. Incrementing it would often move nothing at all: a photo at 3
- * moved to 4 still renders after another photo at 4, and the `id` tiebreaker does
- * not move either. Swapping the two photos' values always changes the rendered
- * sequence by exactly one place.
+ * The neighbour is looked up in the *complete* ordered sequence, not in a
+ * filtered view. With a status filter applied "the row above" is ambiguous, and
+ * swapping against a photo the admin cannot see would be surprising.
  *
- * The neighbour is looked up in the *complete* ordered sequence, not in a filtered
- * view. With a status filter applied "the row above" is ambiguous, and swapping
- * against a photo the admin cannot see would be surprising.
+ * The whole read-renumber-write runs in one transaction so two concurrent
+ * clicks cannot both read the same order and write overlapping results.
  *
- * The whole read-swap-write runs in one transaction so two concurrent clicks cannot
- * both read the same order and write overlapping results.
- *
- * Lives here rather than in the server action so this ordering rule is one piece
- * of reusable, testable data logic instead of an inline transaction in a module
- * that can only export async functions.
+ * After the swap, every row's `sortOrder` is rewritten to its position in the
+ * new sequence. Writing only the two rows that changed left duplicate values
+ * behind, and those duplicates are exactly what the storefront's `id`
+ * tiebreaker then resolves into an order nobody asked for. Renumbering is one
+ * extra write per photo in a sequence small enough for the admin UI to be
+ * usable, and it leaves no two rows sharing a value — so the next move starts
+ * from a well-defined sequence.
  */
 export async function moveGalleryItemBy(
   id: number,
@@ -141,50 +207,24 @@ export async function moveGalleryItemBy(
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
-    const index = ordered.findIndex((row) => row.id === id);
+    const result = applyGalleryMove(
+      ordered.map((row) => row.id),
+      id,
+      direction
+    );
 
-    if (index === -1) return { status: 'not-found' };
+    if (result.status === 'not-found') return { status: 'not-found' };
+    if (result.status === 'edge') return { status: 'edge', id };
 
-    const targetIndex = index + direction;
-
-    if (targetIndex < 0 || targetIndex >= ordered.length) {
-      return { status: 'edge', id };
-    }
-
-    const current = ordered[index];
-    const neighbour = ordered[targetIndex];
-
-    if (current.sortOrder === neighbour.sortOrder) {
-      /*
-       * Identical values cannot be swapped into a different order, because the
-       * storefront breaks the tie on `id` — a swap would leave both rows identical.
-       *
-       * So the neighbour is pushed to the far side of the current value instead:
-       * `current.sortOrder - direction`. Moving up (direction -1) raises the
-       * neighbour by one, which puts the current photo in front of it; moving down
-       * lowers it by one, which puts the current photo behind it. The sign is the
-       * opposite of the movement on purpose — the moving photo keeps its value and
-       * the one that yields is the one that changes.
-       *
-       * A single step suffices: the two rows were adjacent in the ordering, so no
-       * third row can sit between `value` and `value ± 1`.
-       */
-      await tx.galleryImage.update({
-        where: { id: neighbour.id },
-        data: { sortOrder: current.sortOrder - direction },
-      });
-    } else {
-      await Promise.all([
+    // Renumber the whole sequence to its positions.
+    await Promise.all(
+      result.orderedIds.map((rowId, position) =>
         tx.galleryImage.update({
-          where: { id: current.id },
-          data: { sortOrder: neighbour.sortOrder },
-        }),
-        tx.galleryImage.update({
-          where: { id: neighbour.id },
-          data: { sortOrder: current.sortOrder },
-        }),
-      ]);
-    }
+          where: { id: rowId },
+          data: { sortOrder: position },
+        })
+      )
+    );
 
     return { status: 'moved', id };
   });
