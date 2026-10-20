@@ -9,6 +9,7 @@ import {
   Layers,
   Images,
   Settings2,
+  UserCircle,
   LogOut,
   Menu,
   X,
@@ -49,6 +50,7 @@ const NAV_ITEMS = [
   { href: '/admin/kategori', label: 'Kategori', Icon: Layers },
   { href: '/admin/galeri', label: 'Galeri', Icon: Images },
   { href: '/admin/pengaturan', label: 'Pengaturan', Icon: Settings2 },
+  { href: '/admin/profil', label: 'Profil', Icon: UserCircle },
 ] as const;
 
 /**

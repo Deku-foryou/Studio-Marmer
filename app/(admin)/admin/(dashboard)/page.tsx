@@ -97,6 +97,14 @@ export default async function AdminDashboardPage() {
             </div>
           ))}
         </dl>
+        <div className="mt-4">
+          <Link
+            href="/admin/profil"
+            className="text-[10px] uppercase tracking-[0.16em] text-[#8B7355] font-medium hover:text-[#1A1A1A] transition-colors"
+          >
+            Ubah profil admin
+          </Link>
+        </div>
       </section>
 
       {/* ─── Modules ──────────────────────────────────────────────── */}
