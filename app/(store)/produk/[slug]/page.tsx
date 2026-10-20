@@ -136,28 +136,41 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           {/* Name */}
-          <h1
-            className="text-3xl sm:text-4xl font-light tracking-tight text-[#1A1A1A] leading-tight animate-fade-in-up"
+          <div
+            className="animate-fade-in-up"
             style={{ animationDelay: '250ms', animationFillMode: 'both' }}
           >
-            {product.title}
-          </h1>
+            <span className="block text-[10px] uppercase tracking-[0.2em] text-[#999999] font-medium mb-2">
+              Nama Produk
+            </span>
+            <h1 className="text-3xl sm:text-4xl font-light tracking-tight text-[#1A1A1A] leading-tight">
+              {product.title}
+            </h1>
+          </div>
 
           {/* Stone type */}
           {product.stoneType && (
-            <p
-              className="text-[11px] uppercase tracking-[0.2em] text-[#8B7355] animate-fade-in-up"
+            <div
+              className="animate-fade-in-up"
               style={{ animationDelay: '300ms', animationFillMode: 'both' }}
             >
-              Marmer {product.stoneType}
-            </p>
+              <span className="block text-[10px] uppercase tracking-[0.2em] text-[#999999] font-medium mb-1">
+                Jenis Batu
+              </span>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-[#8B7355]">
+                {product.stoneType}
+              </p>
+            </div>
           )}
 
           {/* Price */}
           <div
-            className="animate-fade-in-up"
+            className="border-t border-[#E5E1DA] pt-6 animate-fade-in-up"
             style={{ animationDelay: '350ms', animationFillMode: 'both' }}
           >
+            <span className="block text-[10px] uppercase tracking-[0.2em] text-[#999999] font-medium mb-3">
+              Harga
+            </span>
             {product.pricingType === 'STARTING_FROM' && (
               <span className="block text-[10px] uppercase tracking-[0.18em] text-[#999999] mb-1">
                 Mulai dari
@@ -189,12 +202,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </p>
 
           {/* Description */}
-          <p
-            className="text-sm text-[#666666] leading-relaxed font-light animate-fade-in-up"
+          <div
+            className="border-t border-[#E5E1DA] pt-6 animate-fade-in-up"
             style={{ animationDelay: '430ms', animationFillMode: 'both' }}
           >
-            {product.description}
-          </p>
+            <span className="block text-[10px] uppercase tracking-[0.2em] text-[#999999] font-medium mb-3">
+              Deskripsi
+            </span>
+            <p className="text-sm text-[#666666] leading-relaxed font-light whitespace-pre-line">
+              {product.description}
+            </p>
+          </div>
 
           {/* Highlight chips */}
           <div

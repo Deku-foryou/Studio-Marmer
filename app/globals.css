@@ -85,10 +85,10 @@
 
   /* ─── Navbar ────────────────────────────────────────────── */
   .navbar-warm {
-    background: rgba(251, 249, 246, 0.85);
+    background: rgba(251, 249, 246, 0.97);
     border-bottom: 1px solid var(--border-hairline);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
   /* ─── Input ─────────────────────────────────────────────── */
