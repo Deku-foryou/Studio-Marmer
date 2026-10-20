@@ -1,15 +1,21 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { MessageCircle, ShoppingBag, Mail, MapPin, Camera, Music2 } from 'lucide-react';
-import { BRAND } from '@/lib/brand';
 import { getSiteSettings } from '@/lib/data/site';
 import { buildWhatsAppLink } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: `Kontak — ${BRAND.name}`,
+  title: 'Kontak',
   description:
     'Hubungi Studio Marmer lewat WhatsApp, Shopee, atau email untuk menanyakan ketersediaan dan detail produk.',
   alternates: { canonical: '/kontak' },
+  openGraph: {
+    title: 'Kontak',
+    description:
+      'Hubungi Studio Marmer lewat WhatsApp, Shopee, atau email untuk menanyakan ketersediaan dan detail produk.',
+    url: '/kontak',
+    images: [{ url: '/images/hero-marble-vanity-1672.webp', alt: 'Studio Marmer - kontak' }],
+  },
 };
 
 /**

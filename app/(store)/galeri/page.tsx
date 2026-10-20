@@ -1,15 +1,21 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { BRAND } from '@/lib/brand';
 import { getGalleryPhotos } from '@/lib/data/gallery';
 import { getSiteSettings } from '@/lib/data/site';
 import WhatsAppCta from '@/components/sections/WhatsAppCta';
 
 export const metadata: Metadata = {
-  title: `Galeri — ${BRAND.name}`,
+  title: 'Galeri',
   description:
     'Berbagai produk dan detail marmer yang dikerjakan Studio Marmer, termasuk tempat tisu, tempat sabun, holder, nampan, coaster, dan vas.',
   alternates: { canonical: '/galeri' },
+  openGraph: {
+    title: 'Galeri',
+    description:
+      'Berbagai produk dan detail marmer yang dikerjakan Studio Marmer, termasuk tempat tisu, tempat sabun, holder, nampan, coaster, dan vas.',
+    url: '/galeri',
+    images: [{ url: '/images/hero-marble-vanity-1672.webp', alt: 'Studio Marmer - galeri kerajinan marmer' }],
+  },
 };
 
 /**

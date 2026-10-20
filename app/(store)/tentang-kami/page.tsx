@@ -1,11 +1,17 @@
 import type { Metadata } from 'next';
-import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: `Tentang Kami — ${BRAND.name}`,
+  title: 'Tentang Kami',
   description:
     'Studio Marmer mengolah marmer menjadi tempat tisu, tempat sabun, nampan, dan vas kecil. Setiap potongan punya corak dan warna yang berbeda.',
   alternates: { canonical: '/tentang-kami' },
+  openGraph: {
+    title: 'Tentang Kami',
+    description:
+      'Studio Marmer mengolah marmer menjadi tempat tisu, tempat sabun, nampan, dan vas kecil. Setiap potong punya corak dan warna yang berbeda.',
+    url: '/tentang-kami',
+    images: [{ url: '/images/hero-marble-vanity-1672.webp', alt: 'Studio Marmer - tentang kami' }],
+  },
 };
 
 /**

@@ -11,7 +11,7 @@ import {
   getProductCountsByCategory,
 } from '@/lib/data/products';
 import { getSiteSettings } from '@/lib/data/site';
-import { BRAND } from '@/lib/brand';
+import { absoluteUrl } from '@/lib/site-url';
 import { PRODUCTS_PER_PAGE, parseCatalogQuery } from '@/lib/catalog-query';
 
 /**
@@ -29,12 +29,16 @@ import { PRODUCTS_PER_PAGE, parseCatalogQuery } from '@/lib/catalog-query';
  * does not support.
  */
 export const metadata: Metadata = {
-  title: `${BRAND.name} — Katalog Kerajinan Marmer`,
+  title: 'Katalog Kerajinan Marmer',
   description:
     'Katalog kerajinan marmer Studio Marmer: tempat tisu, tempat sabun, holder, nampan, coaster, dan vas kecil. Lihat detail produk dan hubungi melalui WhatsApp atau Shopee.',
   alternates: { canonical: '/' },
   openGraph: {
+    title: 'Katalog Kerajinan Marmer',
+    description:
+      'Katalog kerajinan marmer Studio Marmer: tempat tisu, tempat sabun, holder, nampan, coaster, dan vas kecil. Lihat detail produk dan hubungi melalui WhatsApp atau Shopee.',
     url: '/',
+    images: [{ url: '/images/hero-marble-vanity-1672.webp', alt: 'Studio Marmer - katalog kerajinan marmer' }],
   },
 };
 
@@ -105,8 +109,40 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     }),
   ]);
 
+  const sameAs = [
+    settings.instagramUrl,
+    settings.tiktokUrl,
+    settings.shopeeUrl,
+    settings.tokopediaUrl,
+  ].filter((value): value is string => Boolean(value));
+
+  const homeJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: 'Studio Marmer',
+        url: absoluteUrl('/'),
+        logo: settings.logoUrl ?? absoluteUrl('/images/sm-icon-512.png'),
+        sameAs,
+      },
+      {
+        '@type': 'WebSite',
+        name: 'Studio Marmer',
+        url: absoluteUrl('/'),
+      },
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(homeJsonLd).replace(/</g, '\\u003c'),
+        }}
+      />
+
       <HeroSection settings={settings} />
 
       <CategoriesSection categories={categories} counts={counts} />

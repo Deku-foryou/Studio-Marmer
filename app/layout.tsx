@@ -18,11 +18,11 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(siteOrigin()),
   title: {
-    default: 'Studio Marmer — Kerajinan Marmer',
-    template: '%s',
+    default: 'Studio Marmer | Produk Marmer Handmade',
+    template: '%s | Studio Marmer',
   },
   description:
-    'Studio Marmer mengolah marmer menjadi tempat tisu, tempat sabun, holder, nampan, dan vas kecil.',
+    'Studio Marmer menghadirkan kerajinan marmer handmade: tempat tisu, tempat sabun, holder, nampan, coaster, dan vas kecil. Lihat katalog dan hubungi kami via WhatsApp.',
   keywords: [
     'kerajinan marmer',
     'marmer handmade',
@@ -43,12 +43,21 @@ export const metadata: Metadata = {
     apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
-    title: 'Studio Marmer — Kerajinan Marmer',
+    title: 'Studio Marmer | Produk Marmer Handmade',
     description:
-      'Tempat tisu, tempat sabun, holder, nampan, dan vas kecil dari marmer pilihan.',
+      'Studio Marmer menghadirkan kerajinan marmer handmade: tempat tisu, tempat sabun, holder, nampan, coaster, dan vas kecil. Lihat katalog dan hubungi kami via WhatsApp.',
     type: 'website',
     locale: 'id_ID',
     siteName: 'Studio Marmer',
+    images: [
+      {
+        url: '/images/hero-marble-vanity-1672.webp',
+        alt: 'Studio Marmer - kerajinan marmer handmade',
+      },
+    ],
+  },
+  alternates: {
+    canonical: '/',
   },
   robots: {
     index: true,
