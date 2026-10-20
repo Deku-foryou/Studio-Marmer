@@ -30,11 +30,11 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${product.title} — Studio Marmer`,
+    title: product.title,
     description: product.shortDescription,
     alternates: { canonical: `/produk/${product.slug}` },
     openGraph: {
-      title: `${product.title} — Studio Marmer`,
+      title: product.title,
       description: product.shortDescription,
       type: 'website',
       locale: 'id_ID',
@@ -48,7 +48,7 @@ export async function generateMetadata({
       url: `/produk/${product.slug}`,
       images: product.imageUrl
         ? [{ url: product.imageUrl, alt: product.imageAlt }]
-        : undefined,
+        : [{ url: '/images/hero-marble-vanity-1672.webp', alt: 'Studio Marmer - produk marmer' }],
     },
     other: {
       'product:price:amount': product.price.toString(),
@@ -82,8 +82,33 @@ export default async function ProductPage({ params }: ProductPageProps) {
     'Halo Studio Marmer, saya ingin menanyakan tentang produk yang Anda jual.'
   );
 
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.title,
+    image: product.imageUrl
+      ? [product.imageUrl]
+      : [absoluteUrl('/images/hero-marble-vanity-1672.webp')],
+    description: product.description,
+    offers: {
+      '@type': 'Offer',
+      price: product.price.toString(),
+      priceCurrency: 'IDR',
+      availability: product.isAvailable
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+      url: productUrl,
+    },
+  };
+
   return (
     <main className="min-h-screen bg-[#FBF9F6] pt-10 sm:pt-14 pb-20 px-6 sm:px-8 lg:px-16 max-w-7xl mx-auto">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productJsonLd).replace(/</g, '\\u003c'),
+        }}
+      />
       {/* ─── Back nav ──────────────────────────────────────────────── */}
       <div
         className="mb-8 sm:mb-10 animate-fade-in-up"
