@@ -349,16 +349,14 @@ export async function getCatalogProducts(
   input: CatalogQueryInput
 ): Promise<CatalogPage> {
   const pageSize = Math.max(1, Math.floor(input.pageSize));
-  const requestedPage = Math.floor(input.page);
+  const rawPage = Number(input.page);
+  const requestedPage = Number.isFinite(rawPage) ? Math.floor(rawPage) : 1;
   const where = buildCatalogWhere(input);
   const orderBy = buildCatalogOrderBy(input.sort);
 
   const total = await prisma.product.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const currentPage = Math.min(
-    Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1),
-    totalPages
-  );
+  const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
 
   const rows = (await prisma.product.findMany({
     where,

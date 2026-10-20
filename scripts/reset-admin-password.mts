@@ -14,6 +14,19 @@ if (!dbUrl) {
 }
 
 const url = new URL(dbUrl);
+
+console.log(`Reset password target database host: ${url.hostname}`);
+
+const isProductionTarget =
+  process.env.NODE_ENV === 'production' || url.hostname.includes('dockhosting.dev');
+
+if (isProductionTarget && process.env.ALLOW_PROD_SCRIPT !== 'yes') {
+  console.error(
+    'Reset password dibatalkan: target terdeteksi production. Set ALLOW_PROD_SCRIPT=yes untuk melanjutkan dengan sadar.'
+  );
+  process.exit(1);
+}
+
 if (url.hostname !== 'studio-marmer.db.dockhosting.dev') {
   console.error(
     '❌ DATABASE_URL hostname must be studio-marmer.db.dockhosting.dev'
@@ -53,7 +66,7 @@ async function bacaPasswordTersembunyi(): Promise<string> {
 
     try {
       process.stdin.setRawMode(true);
-    } catch (e) {
+    } catch {
       reject(new Error('Gagal mengaktifkan raw mode stdin'));
       return;
     }

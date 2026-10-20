@@ -32,6 +32,36 @@
 import { PrismaClient, Role } from '@prisma/client';
 import { hashPassword } from '../lib/db/password';
 
+function assertSafeSeedTarget(): void {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.error('Seed dibatalkan: DATABASE_URL tidak ditemukan.');
+    process.exit(1);
+  }
+
+  let host = '';
+  try {
+    host = new URL(dbUrl).hostname;
+  } catch {
+    console.error('Seed dibatalkan: DATABASE_URL tidak valid.');
+    process.exit(1);
+  }
+
+  console.log(`Seed target database host: ${host}`);
+
+  const isProductionTarget =
+    process.env.NODE_ENV === 'production' || host.includes('dockhosting.dev');
+
+  if (isProductionTarget && process.env.ALLOW_PROD_SCRIPT !== 'yes') {
+    console.error(
+      'Seed dibatalkan: target terdeteksi production. Set ALLOW_PROD_SCRIPT=yes untuk melanjutkan dengan sadar.'
+    );
+    process.exit(1);
+  }
+}
+
+assertSafeSeedTarget();
+
 const prisma = new PrismaClient();
 
 /**

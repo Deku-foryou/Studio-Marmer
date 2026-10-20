@@ -259,6 +259,8 @@ export async function updateProduct(
       };
     }
 
+    let orphanedPublicIds: string[] = [];
+
     await prisma.$transaction(async (tx) => {
       await tx.product.update({
         where: { id: productId },
@@ -388,24 +390,24 @@ export async function updateProduct(
        * rather than from `removedIds` alone — a replacement is not a removal,
        * but it leaves the same kind of orphan.
        */
-      const orphanedPublicIds = existing
+      orphanedPublicIds = existing
         .filter((row) => row.publicId)
         .map((row) => row.publicId as string)
         .filter((publicId) => {
           const stillUsed = keep.some((image) => image.publicId === publicId);
           return !stillUsed;
         });
-
-      if (orphanedPublicIds.length > 0) {
-        const cleanup = await cleanupUnreferencedAssets(orphanedPublicIds);
-        if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
-          console.warn(
-            `[media-lifecycle] product ${productId} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
-            cleanup.failed
-          );
-        }
-      }
     });
+
+    if (orphanedPublicIds.length > 0) {
+      const cleanup = await cleanupUnreferencedAssets(orphanedPublicIds);
+      if (cleanup.failed.length > 0 || cleanup.skippedNoCredentials) {
+        console.warn(
+          `[media-lifecycle] product ${productId} updated, but ${cleanup.failed.length} asset(s) need manual cleanup:`,
+          cleanup.failed
+        );
+      }
+    }
 
     revalidatePath('/admin/produk');
     revalidatePath(`/admin/produk/${productId}/edit`);
